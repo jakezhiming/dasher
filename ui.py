@@ -177,7 +177,7 @@ def draw_debug_info(screen, player):
     y_pos += line_height
     
     # Display invincibility status
-    invincible_text = render_retro_text(f"Invincible: {player.invincible} ({player.invincible_timer})", 12, BLACK)
+    invincible_text = render_retro_text(f"Invincible: {player.invincible}", 12, BLACK)
     screen.blit(invincible_text, (10, y_pos))
     y_pos += line_height
     

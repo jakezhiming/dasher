@@ -1,6 +1,6 @@
 import pygame
 from constants import (
-    PLAY_AREA_HEIGHT, GRAVITY, INVINCIBILITY_DURATION, IMMOBILIZED_DURATION,
+    PLAY_AREA_HEIGHT, GRAVITY, INVINCIBILITY_DURATION, INVINCIBILITY_FROM_DAMAGE_DURATION, IMMOBILIZED_DURATION,
     RED, DARK_RED, PURPLE, BLACK
 )
 from utils import collide
@@ -132,23 +132,38 @@ class Player:
                 self.respawn_x = self.x
                 self.respawn_y = self.y
 
-        # Collide with platforms
+        # Collide with platforms - improved to prevent falling through at high speeds
         for platform in platforms:
-            if (collide(self, platform) and 
-                self.vy > 0 and 
-                self.y + self.height <= platform.y + 10 and  # Check if player's feet are near the top of platform
-                self.prev_y + self.height <= platform.y):    # Check if player was above the platform in the previous frame
+            # Check if player is currently colliding with platform
+            if collide(self, platform):
+                # Case 1: Player is landing on top of the platform
+                if (self.vy > 0 and  # Moving downward
+                    (self.y + self.height <= platform.y + 10 or  # Either feet are near the top
+                     self.prev_y + self.height <= platform.y)):  # OR was above the platform in previous frame
+                    self.y = platform.y - self.height
+                    self.vy = 0
+                    self.jumping = False
+                    self.double_jumped = False  # Reset double jump when landing
+                    self.respawn_x = self.x
+                    self.respawn_y = self.y
+                # Case 2: Player is hitting the bottom or sides of the platform
+                elif self.vy < 0:  # Moving up
+                    self.y = platform.y + platform.height
+                    self.vy = 0  # Stop upward movement
+            
+            # Additional check for tunneling: check if player "jumped over" the platform in this frame
+            # This handles cases where player moved so fast they went from below to above the platform in one frame
+            elif (not collide(self, platform) and  # Not currently colliding
+                  self.prev_y + self.height > platform.y + platform.height and  # Was below the platform
+                  self.y < platform.y and  # Now above the platform
+                  self.x + self.width > platform.x and self.x < platform.x + platform.width):  # Horizontally aligned
+                # Player tunneled through the platform, place them on top
                 self.y = platform.y - self.height
                 self.vy = 0
                 self.jumping = False
-                self.double_jumped = False  # Reset double jump when landing
+                self.double_jumped = False
                 self.respawn_x = self.x
                 self.respawn_y = self.y
-            # Handle vertical collision with platform sides
-            elif collide(self, platform) and not (self.vy > 0 and self.prev_y + self.height <= platform.y):
-                if self.vy < 0:  # Moving up
-                    self.y = platform.y + platform.height
-                    self.vy = 0  # Stop upward movement
 
         # Vertical collision with obstacles
         for obstacle in obstacles:
@@ -230,8 +245,11 @@ class Player:
             self.speed_boost = False
         if self.flying and current_time - self.flying_timer > 5000:
             self.flying = False
-        if self.invincible and current_time - self.invincible_timer > INVINCIBILITY_DURATION:
-            self.invincible = False
+        if self.invincible:
+            if self.invincible_from_damage and current_time - self.invincible_timer > INVINCIBILITY_FROM_DAMAGE_DURATION:
+                self.invincible = False
+            elif not self.invincible_from_damage and current_time - self.invincible_timer > INVINCIBILITY_DURATION:
+                self.invincible = False
 
         # Update score based on distance and coins
         distance_score = int(self.x / 10)

@@ -1,14 +1,26 @@
 import pygame
 from constants import FONT_PATH
 
+# Font cache to store loaded fonts by size
+_font_cache = {}
+
 def get_retro_font(size):
-    """Load the retro font with the specified size."""
+    """Load the retro font with the specified size, using cache for efficiency."""
+    # Check if the font size is already in the cache
+    if size in _font_cache:
+        return _font_cache[size]
+    
+    # Font not in cache, load it
     try:
-        return pygame.font.Font(FONT_PATH, size)
+        font = pygame.font.Font(FONT_PATH, size)
     except:
         # Fallback to default font if the retro font fails to load
         print("Warning: Could not load retro font, using default font instead")
-        return pygame.font.Font(None, size)
+        font = pygame.font.Font(None, size)
+    
+    # Store in cache for future use
+    _font_cache[size] = font
+    return font
 
 def render_retro_text(text, size, color, max_width=None):
     """Render text with proper wrapping to prevent cutoff."""
@@ -64,21 +76,8 @@ def collide(rect1, rect2):
             rect1.y < rect2.y + rect2.height and
             rect1.y + rect1.height > rect2.y)
 
-def draw_gradient_background(screen):
-    """Draw a gradient background from light blue at the top to a slightly darker blue at the bottom."""
+def draw_background(screen):
+    """Draw a solid background."""
     from constants import LIGHT_BLUE, PLAY_AREA_HEIGHT
-    
-    # Create a gradient from light blue at the top to a slightly darker blue at the bottom
-    top_color = LIGHT_BLUE
-    bottom_color = (135, 206, 235)  # Sky blue
-    
-    for y in range(PLAY_AREA_HEIGHT):
-        # Calculate the color for this line by interpolating between top and bottom colors
-        ratio = y / PLAY_AREA_HEIGHT
-        r = int(top_color[0] * (1 - ratio) + bottom_color[0] * ratio)
-        g = int(top_color[1] * (1 - ratio) + bottom_color[1] * ratio)
-        b = int(top_color[2] * (1 - ratio) + bottom_color[2] * ratio)
-        color = (r, g, b)
-        
-        # Draw a horizontal line with this color
-        pygame.draw.line(screen, color, (0, y), (screen.get_width(), y)) 
+
+    screen.fill(LIGHT_BLUE, (0, 0, screen.get_width(), PLAY_AREA_HEIGHT)) 

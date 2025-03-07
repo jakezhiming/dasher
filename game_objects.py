@@ -1,6 +1,6 @@
 import pygame
 from constants import (
-    GREEN, ORANGE, YELLOW, BLUE, CYAN, MAGENTA, RED,
+    BROWN, GREEN, YELLOW, BLUE, CYAN, MAGENTA, RED,
     PLAY_AREA_HEIGHT
 )
 
@@ -12,7 +12,7 @@ class Floor:
         self.y = PLAY_AREA_HEIGHT - self.height
 
     def draw(self, screen, camera_x):
-        pygame.draw.rect(screen, GREEN, (self.x - camera_x, self.y, self.width, self.height))
+        pygame.draw.rect(screen, BROWN, (self.x - camera_x, self.y, self.width, self.height))
 
 class Platform:
     def __init__(self, x, y, width):
@@ -22,7 +22,7 @@ class Platform:
         self.height = 20
 
     def draw(self, screen, camera_x):
-        pygame.draw.rect(screen, GREEN, (self.x - camera_x, self.y, self.width, self.height))
+        pygame.draw.rect(screen, BROWN, (self.x - camera_x, self.y, self.width, self.height))
 
 class Obstacle:
     def __init__(self, x, y, width=30, height=30):
@@ -32,7 +32,7 @@ class Obstacle:
         self.height = height
 
     def draw(self, screen, camera_x):
-        pygame.draw.rect(screen, ORANGE, (self.x - camera_x, self.y, self.width, self.height))
+        pygame.draw.rect(screen, GREEN, (self.x - camera_x, self.y, self.width, self.height))
 
 class Coin:
     def __init__(self, x, y):

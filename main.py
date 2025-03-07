@@ -7,7 +7,7 @@ from constants import (
     GAME_RUNNING, GAME_LOST_MESSAGE, GAME_OVER,
     BLUE, BLACK, RED
 )
-from utils import render_retro_text, draw_gradient_background
+from utils import render_retro_text, draw_background
 from player import Player
 from game_objects import Floor, Platform, Obstacle, Coin, PowerUp
 from ui import draw_status_bar, draw_debug_info, message_manager
@@ -53,13 +53,13 @@ while running:
         game_over = player.update(floors, platforms, obstacles, coins, power_ups)
         camera_x = input_handler.update_scroll(player, camera_x)
         
-        if camera_x + WIDTH > rightmost_floor_end - 300:
+        if camera_x + WIDTH > rightmost_floor_end - 600:
             rightmost_floor_end = generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, rightmost_floor_end, camera_x, WIDTH)
         
         floors, platforms, obstacles, coins, power_ups = remove_old_objects(player, floors, platforms, obstacles, coins, power_ups)
 
         # Draw background
-        draw_gradient_background(screen)
+        draw_background(screen)
         for floor in floors:
             floor.draw(screen, camera_x)
         for platform in platforms:
@@ -80,12 +80,12 @@ while running:
         # Draw welcome text if player hasn't moved yet
         if not player_has_moved:
             text = render_retro_text("Welcome to Dasher", 28, BLUE)
-            text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
+            text_rect = text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2 - 50))
             screen.blit(text, text_rect)
             
             # Add a smaller instruction text
             instruction = render_retro_text("Press arrow keys to move", 18, BLACK)
-            instruction_rect = instruction.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20))
+            instruction_rect = instruction.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2 + 20))
             screen.blit(instruction, instruction_rect)
             
         # Check if game over was triggered
@@ -97,7 +97,7 @@ while running:
 
     elif game_state == GAME_LOST_MESSAGE:
         # Draw everything as it was
-        draw_gradient_background(screen)
+        draw_background(screen)
         for floor in floors:
             floor.draw(screen, camera_x)
         for platform in platforms:
@@ -118,14 +118,14 @@ while running:
 
     elif game_state == GAME_OVER:
         # Draw the game over screen
-        draw_gradient_background(screen)
+        draw_background(screen)
         text = render_retro_text("Game Over", 28, RED)
-        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        text_rect = text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2))
         screen.blit(text, text_rect)
         
         # Show final score
         score_text = render_retro_text(f"Final Score: {player.score}", 18, BLACK)
-        score_rect = score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 60))
+        score_rect = score_text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2 + 60))
         screen.blit(score_text, score_rect)
         
         # Exit after showing game over for a while
