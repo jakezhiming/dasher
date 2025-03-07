@@ -4,6 +4,65 @@ import random
 # Initialize Pygame
 pygame.init()
 
+# Load retro font
+FONT_PATH = "fonts/press-start-2p.ttf"
+
+# Function to get retro font with specified size
+def get_retro_font(size):
+    try:
+        return pygame.font.Font(FONT_PATH, size)
+    except:
+        # Fallback to default font if the retro font fails to load
+        print("Warning: Could not load retro font, using default font instead")
+        return pygame.font.Font(None, size)
+
+# Function to render text with proper wrapping to prevent cutoff
+def render_retro_text(text, size, color, max_width=None):
+    font = get_retro_font(size)
+    
+    # If no max width specified or text fits, render normally
+    if max_width is None or font.size(text)[0] <= max_width:
+        return font.render(text, True, color)
+    
+    # Text needs wrapping
+    words = text.split(' ')
+    lines = []
+    current_line = []
+    
+    for word in words:
+        # Try adding the word to the current line
+        test_line = ' '.join(current_line + [word])
+        test_width = font.size(test_line)[0]
+        
+        if test_width <= max_width:
+            # Word fits, add it to the current line
+            current_line.append(word)
+        else:
+            # Word doesn't fit, start a new line
+            if current_line:  # Only add the line if it's not empty
+                lines.append(' '.join(current_line))
+            current_line = [word]
+    
+    # Add the last line if it's not empty
+    if current_line:
+        lines.append(' '.join(current_line))
+    
+    # Render each line
+    line_surfaces = [font.render(line, True, color) for line in lines]
+    
+    # Calculate the total height needed
+    line_height = font.get_linesize()
+    total_height = line_height * len(line_surfaces)
+    
+    # Create a surface to hold all lines
+    text_surface = pygame.Surface((max_width, total_height), pygame.SRCALPHA)
+    
+    # Blit each line onto the surface
+    for i, line_surface in enumerate(line_surfaces):
+        text_surface.blit(line_surface, (0, i * line_height))
+    
+    return text_surface
+
 # Constants
 WIDTH = 800
 HEIGHT = 600
@@ -30,6 +89,7 @@ MIN_PLATFORM_CHANCE = 0.8         # Minimum chance of platforms over pits at hig
 # Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+DARK_GREY = (64, 64, 64)
 RED = (220, 60, 60)        # Softer red for player
 DARK_RED = (180, 0, 0)     # Darker red for damage invincibility
 GREEN = (76, 187, 23)      # Vibrant green for floors/platforms
@@ -51,6 +111,11 @@ clock = pygame.time.Clock()
 space_key_pressed = False  # Track if space key was pressed in the previous frame
 show_debug = False  # Initialize debug display flag
 d_key_pressed = False  # Track D key state to prevent multiple toggles
+
+# Game over states
+GAME_RUNNING = 0
+GAME_LOST_MESSAGE = 1
+GAME_OVER = 2
 
 # Collision detection
 def collide(rect1, rect2):
@@ -123,7 +188,7 @@ class Player:
             pygame.draw.circle(screen, BLACK, (int(screen_x + 20), eye_y), 5)
 
     def update(self, floors, platforms, obstacles, coins, power_ups):
-        global game_over
+        global game_over, game_state
         
         if self.immobilized:
             if pygame.time.get_ticks() - self.immobilized_timer > IMMOBILIZED_DURATION:
@@ -224,6 +289,9 @@ class Player:
         if self.y > PLAY_AREA_HEIGHT:
             self.lives -= 1
             if self.lives > 0:
+                # Reset the last_life message flag if we have more than 1 life left
+                if self.lives > 1:
+                    message_manager.shown_messages.discard("last_life")
                 self.x = self.respawn_x
                 self.y = self.respawn_y
                 self.vx = 0
@@ -238,6 +306,9 @@ class Player:
         if obstacle_collision and not self.invincible:
             self.lives -= 1
             if self.lives > 0:
+                # Reset the last_life message flag if we have more than 1 life left
+                if self.lives > 1:
+                    message_manager.shown_messages.discard("last_life")
                 self.start_invincibility(from_damage=True)
                 # Push player away from obstacle slightly to prevent immediate re-collision
                 if collided_obstacle:
@@ -268,6 +339,8 @@ class Player:
                     self.flying_timer = pygame.time.get_ticks()
                 elif power_up.type == 'invincibility':
                     self.start_invincibility(from_damage=False)
+                elif power_up.type == 'life':
+                    self.add_life()
                 power_ups.remove(power_up)
 
         # Update power-up effects
@@ -290,6 +363,14 @@ class Player:
         self.invincible = True
         self.invincible_timer = pygame.time.get_ticks()
         self.invincible_from_damage = from_damage
+
+    def add_life(self):
+        """Add a life to the player and reset the last_life message flag."""
+        self.lives += 1
+        # Reset the last_life message flag so it can be shown again if needed
+        message_manager.shown_messages.discard("last_life")
+        # Display a message when a life is added
+        message_manager.set_message("Yippee! Extra life collected!")
 
 # Floor class
 class Floor:
@@ -354,7 +435,7 @@ class PowerUp:
         self.center_y = self.y + self.radius
 
     def draw(self, camera_x):
-        color = BLUE if self.type == 'speed' else CYAN if self.type == 'flying' else MAGENTA
+        color = BLUE if self.type == 'speed' else CYAN if self.type == 'flying' else MAGENTA if self.type == 'invincibility' else RED if self.type == 'life' else MAGENTA
         # Draw a circle instead of a rectangle
         pygame.draw.circle(screen, color, (self.center_x - camera_x, self.center_y), self.radius)
 
@@ -411,61 +492,189 @@ def update_scroll(player):
     elif player.x < camera_x + WIDTH * 0.3:
         camera_x = max(dynamic_left_boundary, player.x - WIDTH * 0.3)
 
-# Status bar
+class StatusMessageManager:
+    def __init__(self):
+        self.current_message = ""
+        self.target_message = ""
+        self.display_index = 0
+        self.last_char_time = 0
+        self.char_delay = 5  # Milliseconds between characters
+        self.last_default_time = 0
+        self.default_message_delay = 5000  # 5 seconds between default messages
+        self.default_message_index = 0
+        
+        # Keep track of the last two messages
+        self.previous_message = ""
+        self.current_full_message = ""
+        
+        # Track messages that should only be shown once
+        self.shown_messages = set()
+        
+        # Initialize with a welcome message
+        self.set_message("Welcome to Dasher! Use arrow keys to move and SPACE to jump.")
+        
+    def set_message(self, message):
+        """Set a new message. Newer messages always take precedence."""
+        if message != self.target_message:
+            # Save the current message as previous before setting the new one
+            if self.current_full_message:
+                self.previous_message = self.current_full_message
+            
+            self.target_message = message
+            self.current_full_message = message
+            self.display_index = 0
+            self.last_char_time = pygame.time.get_ticks()
+    
+    def update(self):
+        """Update the streaming text effect."""
+        current_time = pygame.time.get_ticks()
+        
+        # If we're still streaming the message
+        if self.display_index < len(self.target_message):
+            if current_time - self.last_char_time > self.char_delay:
+                self.display_index += 1
+                self.current_message = self.target_message[:self.display_index]
+                self.last_char_time = current_time
+        else:
+            # Message is fully displayed
+            self.current_message = self.target_message
+            
+        return self.current_message
+    
+    def can_show_default_message(self):
+        """Check if enough time has passed to show a new default message."""
+        return pygame.time.get_ticks() - self.last_default_time > self.default_message_delay
+    
+    def set_default_message_shown(self):
+        """Mark that a default message has been shown."""
+        self.last_default_time = pygame.time.get_ticks()
+        self.default_message_index = (self.default_message_index + 1) % 5  # Cycle through 5 default messages
+    
+    def get_previous_message(self):
+        """Get the previous message."""
+        return self.previous_message
+        
+    def has_shown_message(self, message_key):
+        """Check if a specific message has already been shown."""
+        return message_key in self.shown_messages
+        
+    def mark_message_shown(self, message_key):
+        """Mark a specific message as having been shown."""
+        self.shown_messages.add(message_key)
+
+# Create a global instance of the message manager
+message_manager = StatusMessageManager()
+
+def get_status_message(player):
+    """
+    Generate a status message based on the current game state.
+    This function will be easy to replace with an LLM-based solution in the future.
+    """
+    # Default messages that cycle based on time
+    default_messages = [
+        "Run, jump, and collect coins to increase your score!",
+        "Watch out for obstacles ahead!",
+        "Try to go as far as you can!",
+        "Collect power-ups to gain special abilities!",
+        "Press SPACE to jump. Double-tap to double jump!"
+    ]
+    
+    # Priority order for messages (most important first)
+    if player.lives == 1 and not message_manager.has_shown_message("last_life"):
+        message_manager.set_message("You're on your last life! Be careful!")
+        message_manager.mark_message_shown("last_life")
+    elif player.lives > 0 and player.invincible and player.invincible_from_damage:
+        message_manager.set_message("Ouch! You're temporarily invincible after taking damage.")
+    elif player.invincible and not player.invincible_from_damage:
+        message_manager.set_message("You're invincible! Nothing can hurt you now!")
+    elif player.flying:
+        message_manager.set_message("You can fly now! Press SPACE to soar through the sky!")
+    elif player.speed_boost:
+        message_manager.set_message("Super speed activated! Zoom zoom!")
+    elif player.immobilized:
+        message_manager.set_message("You're stuck! Wait to regain movement.")
+    # Only show default messages if it's been a while since the last one
+    elif message_manager.can_show_default_message():
+        message_manager.set_message(default_messages[message_manager.default_message_index])
+        message_manager.set_default_message_shown()
+    
+    # Update and return the current streaming message
+    return message_manager.update()
+
 def draw_status_bar(player):
     # Draw lives at top left
-    font = pygame.font.Font(None, 36)
-    lives_text = font.render(f"Lives: {player.lives}", True, BLACK)
+    lives_text = render_retro_text(f"Lives: {player.lives}", 18, BLACK)
     screen.blit(lives_text, (10, 10))
     
     # Draw score at top right
-    score_text = font.render(f"Score: {player.score}", True, BLACK)
-    screen.blit(score_text, (WIDTH - 150, 10))
+    score_text = render_retro_text(f"Score: {player.score}", 18, BLACK)
+    score_rect = score_text.get_rect()
+    screen.blit(score_text, (WIDTH - score_rect.width - 10, 10))
     
-    # Status bar is kept empty as requested
+    # Draw status bar with message
     pygame.draw.rect(screen, GRAY, (0, PLAY_AREA_HEIGHT, WIDTH, STATUS_BAR_HEIGHT))
+    
+    # Get and display the streaming status message
+    message = get_status_message(player)
+    
+    # Calculate max width for messages (leave some margin on both sides)
+    max_message_width = WIDTH - 40
+    
+    # Display previous message in second row (slightly smaller and faded)
+    previous_message = message_manager.get_previous_message()
+    if previous_message:
+        prev_text = render_retro_text(previous_message, 14, DARK_GREY, max_message_width)
+        screen.blit(prev_text, (20, PLAY_AREA_HEIGHT + STATUS_BAR_HEIGHT - 35))
+    
+    # Display current message in first row
+    message_text = render_retro_text(message, 16, BLACK, max_message_width)
+    screen.blit(message_text, (20, PLAY_AREA_HEIGHT + 20))
 
 # New function to display debug information
 def draw_debug_info(player):
-    font = pygame.font.Font(None, 24)
     y_pos = 50  # Start position for debug info
     line_height = 25
     
-    # Player position
-    pos_text = font.render(f"Position: ({int(player.x)}, {int(player.y)})", True, BLACK)
+    # Calculate difficulty percentage
+    if player.x <= DIFFICULTY_START_DISTANCE:
+        difficulty_percentage = 0
+    elif player.x >= DIFFICULTY_MAX_DISTANCE:
+        difficulty_percentage = 100
+    else:
+        difficulty_percentage = int((player.x - DIFFICULTY_START_DISTANCE) / (DIFFICULTY_MAX_DISTANCE - DIFFICULTY_START_DISTANCE) * 100)
+    
+    # Display player position
+    pos_text = render_retro_text(f"Position: ({int(player.x)}, {int(player.y)})", 12, BLACK)
     screen.blit(pos_text, (10, y_pos))
     y_pos += line_height
     
-    # Player velocity
-    vel_text = font.render(f"Velocity: ({int(player.vx)}, {int(player.vy)})", True, BLACK)
+    # Display player velocity
+    vel_text = render_retro_text(f"Velocity: ({int(player.vx)}, {int(player.vy)})", 12, BLACK)
     screen.blit(vel_text, (10, y_pos))
     y_pos += line_height
     
-    # Player state
-    state_text = font.render(f"Jumping: {player.jumping}, Double jumped: {player.double_jumped}", True, BLACK)
+    # Display player state
+    state_text = render_retro_text(f"Jumping: {player.jumping}, Double jumped: {player.double_jumped}", 12, BLACK)
     screen.blit(state_text, (10, y_pos))
     y_pos += line_height
     
-    # Power-ups
-    powerup_text = font.render(f"Speed boost: {player.speed_boost}, Flying: {player.flying}", True, BLACK)
+    # Display power-up status
+    powerup_text = render_retro_text(f"Speed boost: {player.speed_boost}, Flying: {player.flying}", 12, BLACK)
     screen.blit(powerup_text, (10, y_pos))
     y_pos += line_height
     
-    # Invincibility
-    invincible_text = font.render(f"Invincible: {player.invincible} ({player.invincible_timer})", True, BLACK)
+    # Display invincibility status
+    invincible_text = render_retro_text(f"Invincible: {player.invincible} ({player.invincible_timer})", 12, BLACK)
     screen.blit(invincible_text, (10, y_pos))
     y_pos += line_height
     
-    # Coin score
-    coin_text = font.render(f"Coins: {player.coin_score}", True, BLACK)
+    # Display coin count
+    coin_text = render_retro_text(f"Coins: {player.coin_score}", 12, BLACK)
     screen.blit(coin_text, (10, y_pos))
     y_pos += line_height
     
-    # Difficulty
-    progress = max(0, player.furthest_right_position - DIFFICULTY_START_DISTANCE)
-    difficulty_factor = min(1.0, progress / (DIFFICULTY_MAX_DISTANCE - DIFFICULTY_START_DISTANCE))
-    difficulty_percentage = int(difficulty_factor * 100)
-    difficulty_text = font.render(f"Difficulty: {difficulty_percentage}%", True, BLACK)
+    # Display difficulty percentage
+    difficulty_text = render_retro_text(f"Difficulty: {difficulty_percentage}%", 12, BLACK)
     screen.blit(difficulty_text, (10, y_pos))
 
 # Generate new map segment
@@ -672,7 +881,7 @@ def generate_new_segment():
                 power_ups.append(PowerUp(
                     powerup_x,
                     powerup_y,
-                    random.choice(['speed', 'flying', 'invincibility'])
+                    random.choice(['speed', 'flying', 'invincibility', 'life'])
                 ))
                 break
 
@@ -717,8 +926,9 @@ obstacles = []
 coins = []
 power_ups = []
 game_over = False
-player_has_moved = False  # Track if the player has moved
-player.start_invincibility(from_damage=False)
+game_state = GAME_RUNNING
+game_over_timer = 0
+player_has_moved = False
 
 # Main loop
 running = True
@@ -727,7 +937,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-    if not game_over:
+    if game_state == GAME_RUNNING:
         # Game logic
         handle_input(player)
         
@@ -762,25 +972,58 @@ while running:
             
         # Draw welcome text if player hasn't moved yet
         if not player_has_moved:
-            font = pygame.font.Font(None, 72)
-            text = font.render("Welcome to Dasher", True, (30, 144, 255))  # Using BLUE color
+            text = render_retro_text("Welcome to Dasher", 28, BLUE)
             text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
             screen.blit(text, text_rect)
             
             # Add a smaller instruction text
-            font_small = pygame.font.Font(None, 36)
-            instruction = font_small.render("Press arrow keys to move", True, BLACK)
+            instruction = render_retro_text("Press arrow keys to move", 18, BLACK)
             instruction_rect = instruction.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20))
             screen.blit(instruction, instruction_rect)
+            
+        # Check if game over was triggered
+        if game_over:
+            game_state = GAME_LOST_MESSAGE
+            game_over_timer = pygame.time.get_ticks()
+            message_manager.set_message("Game over! Try again next time!")
+            game_over = False  # Reset this flag since we're using game_state now
 
-    if game_over:
-        font = pygame.font.Font(None, 72)
-        text = font.render("Game Over", True, RED)
+    elif game_state == GAME_LOST_MESSAGE:
+        # Draw everything as it was
+        draw_gradient_background()
+        for floor in floors:
+            floor.draw(camera_x)
+        for platform in platforms:
+            platform.draw(camera_x)
+        for obstacle in obstacles:
+            obstacle.draw(camera_x)
+        for coin in coins:
+            coin.draw(camera_x)
+        for power_up in power_ups:
+            power_up.draw(camera_x)
+        player.draw(camera_x)
+        draw_status_bar(player)
+        
+        # Check if enough time has passed to show game over
+        if pygame.time.get_ticks() - game_over_timer > 2000:  # 2 seconds for "try again" message
+            game_state = GAME_OVER
+            game_over_timer = pygame.time.get_ticks()
+
+    elif game_state == GAME_OVER:
+        # Draw the game over screen
+        draw_gradient_background()
+        text = render_retro_text("Game Over", 28, RED)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text, text_rect)
-        pygame.display.flip()
-        pygame.time.wait(2000)
-        running = False
+        
+        # Show final score
+        score_text = render_retro_text(f"Final Score: {player.score}", 18, BLACK)
+        score_rect = score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 60))
+        screen.blit(score_text, score_rect)
+        
+        # Exit after showing game over for a while
+        if pygame.time.get_ticks() - game_over_timer > 2000:  # 2 seconds for game over screen
+            running = False
 
     pygame.display.flip()
     clock.tick(60)
