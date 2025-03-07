@@ -4,14 +4,16 @@ from constants import BASE_MOVE_SPEED, SPEED_BOOST_MULTIPLIER, JUMP_VELOCITY
 # Global variables for input state
 space_key_pressed = False
 d_key_pressed = False
-show_debug = False
+show_debug = False  # Start with debug off
 
 def handle_input(player):
     """Handle keyboard input for player movement and debug toggle."""
     global space_key_pressed, show_debug, d_key_pressed
     keys = pygame.key.get_pressed()
     
-    # Toggle debug display with 'D' key
+    # Toggle debug display with 'D' key (both uppercase and lowercase)
+    # Note: pygame.K_d is lowercase 'd', pygame.K_CAPITAL_D doesn't exist
+    # Pygame handles this automatically based on the key pressed, not the case
     if keys[pygame.K_d] and not d_key_pressed:
         show_debug = not show_debug
         d_key_pressed = True

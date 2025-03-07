@@ -11,7 +11,7 @@ from utils import render_retro_text, draw_gradient_background
 from player import Player
 from game_objects import Floor, Platform, Obstacle, Coin, PowerUp
 from ui import draw_status_bar, draw_debug_info, message_manager
-from input_handler import handle_input, update_scroll, show_debug
+import input_handler
 from level_generator import generate_new_segment, remove_old_objects
 
 # Initialize Pygame
@@ -39,17 +39,19 @@ player_has_moved = False
 
 # Main loop
 running = True
+frame_count = 0
 while running:
+    frame_count += 1
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
     if game_state == GAME_RUNNING:
         # Game logic
-        player_has_moved = handle_input(player) or player_has_moved
+        player_has_moved = input_handler.handle_input(player) or player_has_moved
             
         game_over = player.update(floors, platforms, obstacles, coins, power_ups)
-        camera_x = update_scroll(player, camera_x)
+        camera_x = input_handler.update_scroll(player, camera_x)
         
         if camera_x + WIDTH > rightmost_floor_end - 300:
             rightmost_floor_end = generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, rightmost_floor_end, camera_x, WIDTH)
@@ -72,7 +74,7 @@ while running:
         draw_status_bar(screen, player)
         
         # Draw debug info if enabled
-        if show_debug:
+        if input_handler.show_debug:
             draw_debug_info(screen, player)
             
         # Draw welcome text if player hasn't moved yet
