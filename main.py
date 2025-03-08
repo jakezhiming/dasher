@@ -40,7 +40,13 @@ player_has_moved = False
 # Main loop
 running = True
 frame_count = 0
+last_time = pygame.time.get_ticks()
 while running:
+    # Calculate delta time for smooth animations
+    current_time = pygame.time.get_ticks()
+    dt = (current_time - last_time) / 1000.0  # Convert to seconds
+    last_time = current_time
+    
     frame_count += 1
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -52,6 +58,15 @@ while running:
             
         game_over = player.update(floors, platforms, obstacles, coins, power_ups)
         camera_x = input_handler.update_scroll(player, camera_x)
+        
+        # Update animations for coins and power-ups
+        for coin in coins:
+            coin.update(dt)
+        for power_up in power_ups:
+            power_up.update(dt)
+        # Update animations for obstacles
+        for obstacle in obstacles:
+            obstacle.update(dt)
         
         if camera_x + WIDTH > rightmost_floor_end - 600:
             rightmost_floor_end = generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, rightmost_floor_end, camera_x, WIDTH)

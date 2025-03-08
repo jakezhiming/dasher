@@ -184,7 +184,8 @@ class Player:
             self.lives -= 1
             if self.lives > 0:
                 # Reset the last_life message flag if we have more than 1 life left
-                from ui import message_manager
+                from ui import message_manager, set_hearts_flash
+                set_hearts_flash()  # Trigger heart flashing effect
                 if self.lives > 1:
                     message_manager.shown_messages.discard("last_life")
                 self.x = self.respawn_x
@@ -202,7 +203,8 @@ class Player:
             self.lives -= 1
             if self.lives > 0:
                 # Reset the last_life message flag if we have more than 1 life left
-                from ui import message_manager
+                from ui import message_manager, set_hearts_flash
+                set_hearts_flash()  # Trigger heart flashing effect
                 if self.lives > 1:
                     message_manager.shown_messages.discard("last_life")
                 self.start_invincibility(from_damage=True)
@@ -221,7 +223,7 @@ class Player:
         # Collect coins
         for coin in coins[:]:
             if collide(self, coin):
-                self.coin_score += 10
+                self.coin_score += 50
                 coins.remove(coin)
 
         # Collect power-ups

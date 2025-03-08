@@ -110,7 +110,7 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 platform_y = random.randint(100, PLAY_AREA_HEIGHT - 150)
                 new_platform = Platform(platform_x, platform_y, platform_width)
                 platforms.append(new_platform)
-                add_to_collision_grid(new_platform, platform_x, platform_y, platform_width, 10)  # Assuming platform height is 10
+                add_to_collision_grid(new_platform, platform_x, platform_y, platform_width, 20)  # Changed from 10 to 20 to match Platform.height
             else:
                 # If pit is too narrow for a platform, place a wider platform that extends beyond the pit
                 platform_width = 150
@@ -118,7 +118,7 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 platform_y = random.randint(100, PLAY_AREA_HEIGHT - 150)
                 new_platform = Platform(platform_x, platform_y, platform_width + 100)
                 platforms.append(new_platform)
-                add_to_collision_grid(new_platform, platform_x, platform_y, platform_width + 100, 10)
+                add_to_collision_grid(new_platform, platform_x, platform_y, platform_width + 100, 20)  # Changed from 10 to 20
         
         # Add a floor segment
         floor_width = random.randint(100, 300)
@@ -138,7 +138,7 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 platform_width = random.randint(50, 150)
                 new_platform = Platform(platform_x, platform_y, platform_width)
                 platforms.append(new_platform)
-                add_to_collision_grid(new_platform, platform_x, platform_y, platform_width, 10)
+                add_to_collision_grid(new_platform, platform_x, platform_y, platform_width, 20)  # Changed from 10 to 20
         
         # Only generate obstacles and collectibles if they'll be off-screen
         if current_x > visible_right_edge:
@@ -150,11 +150,37 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 # Calculate obstacle position
                 obstacle_x = current_x - floor_width + random.randint(50, max(51, floor_width - 50))
                 
-                # Simplified obstacle size calculation
-                base_width = BASE_OBSTACLE_WIDTH + int(40 * difficulty_factor)
-                base_height = BASE_OBSTACLE_HEIGHT + int(40 * difficulty_factor)
-                obstacle_width = random.randint(BASE_OBSTACLE_WIDTH, base_width)
-                obstacle_height = random.randint(BASE_OBSTACLE_HEIGHT, base_height)
+                # Calculate obstacle size based on difficulty
+                min_size = 30  # Minimum size to ensure visibility
+                
+                # Determine if we should create a special shape
+                shape_type = random.choices(
+                    ['normal', 'tall', 'wide', 'small', 'large'],
+                    weights=[0.5, 0.15, 0.15, 0.1, 0.1]
+                )[0]
+                
+                if shape_type == 'tall':
+                    # Create a tall obstacle (good for spikes)
+                    obstacle_width = random.randint(min_size, 40)
+                    obstacle_height = random.randint(50, 80 + int(30 * difficulty_factor))
+                elif shape_type == 'wide':
+                    # Create a wide obstacle (good for lava)
+                    obstacle_width = random.randint(60, 100 + int(40 * difficulty_factor))
+                    obstacle_height = random.randint(min_size, 40)
+                elif shape_type == 'small':
+                    # Create a small obstacle (good for rocks)
+                    obstacle_width = random.randint(min_size, 40)
+                    obstacle_height = random.randint(min_size, 40)
+                elif shape_type == 'large':
+                    # Create a large obstacle (good for crates)
+                    obstacle_width = random.randint(50, 70 + int(30 * difficulty_factor))
+                    obstacle_height = random.randint(50, 70 + int(30 * difficulty_factor))
+                else:
+                    # Normal random size
+                    base_width = BASE_OBSTACLE_WIDTH + int(30 * difficulty_factor)
+                    base_height = BASE_OBSTACLE_HEIGHT + int(30 * difficulty_factor)
+                    obstacle_width = random.randint(min_size, base_width)
+                    obstacle_height = random.randint(min_size, base_height)
                 
                 # Place obstacle on floor or platform
                 if random.random() < 0.25 and platforms:
@@ -204,17 +230,22 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 # Decide whether to place on platform or floor
                 if platforms and random.random() < coin_platform_placement_chance:
                     # Place on a platform
-                    p = random.choice(platforms[-3:] if len(platforms) > 3 else platforms)  # Choose from recent platforms
+                    # Only consider platforms that are off-screen
+                    off_screen_platforms = [p for p in platforms if p.x > visible_right_edge]
                     
-                    # Ensure platform is wide enough
-                    if p.width >= 30:
-                        coin_x = p.x + random.randint(10, p.width - 20)
-                        coin_y = p.y - 30  # Place above the platform
+                    if off_screen_platforms:
+                        # Choose from recent off-screen platforms
+                        p = random.choice(off_screen_platforms[-3:] if len(off_screen_platforms) > 3 else off_screen_platforms)
                         
-                        if not would_overlap_with_obstacle(coin_x, coin_y, 20, 20):
-                            new_coin = Coin(coin_x, coin_y)
-                            coins.append(new_coin)
-                            add_to_collision_grid(new_coin, coin_x, coin_y, 20, 20)
+                        # Ensure platform is wide enough
+                        if p.width >= 30:
+                            coin_x = p.x + random.randint(10, p.width - 20)
+                            coin_y = p.y - 30  # Place above the platform
+                            
+                            if not would_overlap_with_obstacle(coin_x, coin_y, 20, 20):
+                                new_coin = Coin(coin_x, coin_y)
+                                coins.append(new_coin)
+                                add_to_collision_grid(new_coin, coin_x, coin_y, 20, 20)
                 else:
                     # Place on the floor (original behavior)
                     coin_x = current_x - floor_width + random.randint(0, floor_width - 20)
@@ -235,21 +266,26 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 # Decide whether to place on platform or floor
                 if platforms and random.random() < platform_placement_chance:
                     # Place on a platform
-                    p = random.choice(platforms[-3:] if len(platforms) > 3 else platforms)  # Choose from recent platforms
+                    # Only consider platforms that are off-screen
+                    off_screen_platforms = [p for p in platforms if p.x > visible_right_edge]
                     
-                    # Ensure platform is wide enough
-                    if p.width >= 30:
-                        powerup_x = p.x + random.randint(10, p.width - 20)
-                        powerup_y = p.y - 30  # Place above the platform
+                    if off_screen_platforms:
+                        # Choose from recent off-screen platforms
+                        p = random.choice(off_screen_platforms[-3:] if len(off_screen_platforms) > 3 else off_screen_platforms)
                         
-                        if not would_overlap_with_obstacle(powerup_x, powerup_y, 20, 20):
-                            new_powerup = PowerUp(
-                                powerup_x,
-                                powerup_y,
-                                random.choice(['speed', 'flying', 'invincibility', 'life'])
-                            )
-                            power_ups.append(new_powerup)
-                            add_to_collision_grid(new_powerup, powerup_x, powerup_y, 20, 20)
+                        # Ensure platform is wide enough
+                        if p.width >= 30:
+                            powerup_x = p.x + random.randint(10, p.width - 20)
+                            powerup_y = p.y - 30  # Place above the platform
+                            
+                            if not would_overlap_with_obstacle(powerup_x, powerup_y, 20, 20):
+                                new_powerup = PowerUp(
+                                    powerup_x,
+                                    powerup_y,
+                                    random.choice(['speed', 'flying', 'invincibility', 'life'])
+                                )
+                                power_ups.append(new_powerup)
+                                add_to_collision_grid(new_powerup, powerup_x, powerup_y, 20, 20)
                 else:
                     # Place on the floor (original behavior)
                     powerup_x = current_x - floor_width + random.randint(0, floor_width - 20)

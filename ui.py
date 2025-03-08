@@ -1,9 +1,57 @@
 import pygame
 from constants import (
     PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH, HEIGHT,
-    BLACK, DARK_GREY, GRAY
+    BLACK, DARK_GREY, GRAY, RED,
+    INVINCIBILITY_FROM_DAMAGE_DURATION
 )
 from utils import render_retro_text
+
+heart_sprite = None
+heart_sprite_size = 0
+heart_flash_time = 0
+heart_flash_duration = INVINCIBILITY_FROM_DAMAGE_DURATION 
+
+def load_heart_sprite():
+    """Load the heart sprite image."""
+    global heart_sprite, heart_sprite_size
+    try:
+        heart_path = "assets/images/hearts/heart pixel art/heart pixel art 32x32.png"
+        heart_sprite = pygame.image.load(heart_path).convert_alpha()
+        heart_sprite_size = 32
+        print(f"Successfully loaded heart sprite from {heart_path}")
+    except Exception as e:
+        print(f"Error loading heart sprite: {e}")
+        exit()
+
+def set_hearts_flash():
+    """Set the hearts to flash (call this when player loses a life)."""
+    global heart_flash_time
+    heart_flash_time = pygame.time.get_ticks()
+
+def draw_heart(screen, x, y, size=32, color=None, flashing=False):
+    """Draw a heart at the specified position with the given size."""
+    global heart_sprite, heart_sprite_size
+    
+    # Load the sprite if it hasn't been loaded yet
+    if heart_sprite is None:
+        load_heart_sprite()
+    
+    # Create a copy of the sprite for potential color modification
+    sprite_to_use = heart_sprite.copy() if flashing else heart_sprite
+    
+    # If flashing, apply a white tint
+    if flashing:
+        # Create a white overlay
+        white_overlay = pygame.Surface(sprite_to_use.get_size()).convert_alpha()
+        white_overlay.fill((255, 255, 255, 128))  # Semi-transparent white
+        sprite_to_use.blit(white_overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+    
+    # Scale the sprite if needed
+    if size != heart_sprite_size:
+        scaled_sprite = pygame.transform.scale(sprite_to_use, (size, size))
+        screen.blit(scaled_sprite, (x, y))
+    else:
+        screen.blit(sprite_to_use, (x, y))
 
 class StatusMessageManager:
     def __init__(self):
@@ -115,9 +163,28 @@ def get_status_message(player):
     return message_manager.update()
 
 def draw_status_bar(screen, player):
-    # Draw lives at top left
-    lives_text = render_retro_text(f"Lives: {player.lives}", 18, BLACK)
-    screen.blit(lives_text, (10, 10))
+    # Check if hearts should be flashing
+    current_time = pygame.time.get_ticks()
+    hearts_flashing = (current_time - heart_flash_time < heart_flash_duration)
+    
+    # Flash pattern - alternate every 100ms
+    flash_on = hearts_flashing and ((current_time // 100) % 2 == 0)
+    
+    # Draw hearts for lives at top left
+    heart_size = 24  # Adjust size as needed for the sprite
+    heart_spacing = 28  # Space between hearts
+    heart_y_position = 15
+    max_hearts = 5  # Maximum number of hearts to display
+    
+    # Display hearts based on player lives, up to max_hearts
+    displayed_hearts = min(player.lives, max_hearts)
+    for i in range(displayed_hearts):
+        draw_heart(screen, 15 + (i * heart_spacing), heart_y_position, heart_size, flashing=flash_on)
+    
+    # If player has more lives than max_hearts, show a "+" indicator
+    if player.lives > max_hearts:
+        plus_text = render_retro_text(f"+{player.lives - max_hearts}", 14, RED)
+        screen.blit(plus_text, (10 + (max_hearts * heart_spacing), heart_y_position + 5))
     
     # Draw score at top right
     score_text = render_retro_text(f"Score: {player.score}", 18, BLACK)
