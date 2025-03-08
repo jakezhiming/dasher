@@ -16,7 +16,7 @@ def load_heart_sprite():
     """Load the heart sprite image."""
     global heart_sprite, heart_sprite_size
     try:
-        heart_path = "assets/images/hearts/heart pixel art/heart pixel art 32x32.png"
+        heart_path = "assets/images/stats/heart pixel art 32x32.png"
         heart_sprite = pygame.image.load(heart_path).convert_alpha()
         heart_sprite_size = 32
         print(f"Successfully loaded heart sprite from {heart_path}")

@@ -1,7 +1,7 @@
 import pygame
 
 # Font path
-FONT_PATH = "fonts/press-start-2p.ttf"
+FONT_PATH = "assets/fonts/press-start-2p.ttf"
 
 # Screen dimensions
 WIDTH = 800

@@ -28,7 +28,7 @@ def load_textures():
         
         # Load coin sprite
         try:
-            coin_path = "assets/images/sprites/coin.png"
+            coin_path = "assets/images/powerups/coin.png"
             coin_sprite = pygame.image.load(coin_path).convert_alpha()
             # Resize to match the game's dimensions if needed
             if coin_sprite.get_width() != 20 or coin_sprite.get_height() != 20:
@@ -42,7 +42,7 @@ def load_textures():
         try:
             powerup_types = ['speed', 'flying', 'invincibility', 'life']
             for p_type in powerup_types:
-                path = f"assets/images/sprites/powerup_{p_type}.png"
+                path = f"assets/images/powerups/powerup_{p_type}.png"
                 powerup_sprites[p_type] = pygame.image.load(path).convert_alpha()
                 # Resize to match the game's dimensions if needed
                 if powerup_sprites[p_type].get_width() != 20 or powerup_sprites[p_type].get_height() != 20:
@@ -57,7 +57,7 @@ def load_textures():
             # Load multiple obstacle variations
             obstacle_types = ['rock', 'crate', 'spikes', 'lava', 'saw']
             for o_type in obstacle_types:
-                path = f"assets/images/sprites/obstacles/obstacle_{o_type}.png"
+                path = f"assets/images/obstacles/obstacle_{o_type}.png"
                 try:
                     sprite = pygame.image.load(path).convert_alpha()
                     obstacle_sprites.append(sprite)

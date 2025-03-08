@@ -64,9 +64,6 @@ class Player:
         self.sprite_height = self.height
         self.sprite_offset_x = 0
         self.sprite_offset_y = 0
-        
-        # Debug mode for showing hitbox
-        self.show_hitbox = False
 
     def draw(self, screen, camera_x):
         screen_x = self.x - camera_x
@@ -142,7 +139,7 @@ class Player:
             self._draw_dust_effects(screen, screen_x)
         
         # Draw hitbox for debugging if enabled
-        if self.show_hitbox or input_handler.show_debug:
+        if input_handler.show_debug:
             pygame.draw.rect(screen, (255, 0, 0, 128), (screen_x, self.y, self.width, self.height), 1)
 
     def _get_animation_key(self):

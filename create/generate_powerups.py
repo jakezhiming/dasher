@@ -5,7 +5,7 @@ import os
 pygame.init()
 
 # Create the sprites directory if it doesn't exist
-os.makedirs("assets/images/sprites", exist_ok=True)
+os.makedirs("assets/images/powerups", exist_ok=True)
 
 # Set up colors
 YELLOW = (255, 215, 0)  # Gold for coin
@@ -76,7 +76,7 @@ def create_sprite(size, color, sprite_type):
 
 # Create and save sprites
 def save_sprite(sprite, filename):
-    full_path = os.path.join("assets/images/sprites", filename)
+    full_path = os.path.join("assets/images/powerups", filename)
     pygame.image.save(sprite, full_path)
     print(f"Created {full_path}")
 

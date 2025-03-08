@@ -7,7 +7,7 @@ import random
 pygame.init()
 
 # Create directory if it doesn't exist
-os.makedirs("assets/images/sprites/obstacles", exist_ok=True)
+os.makedirs("assets/images/obstacles", exist_ok=True)
 
 # Define colors
 BROWN = (139, 69, 19)
@@ -130,7 +130,7 @@ sprites = {
 }
 
 for name, sprite in sprites.items():
-    path = f"assets/images/sprites/obstacles/obstacle_{name}.png"
+    path = f"assets/images/obstacles/obstacle_{name}.png"
     pygame.image.save(sprite, path)
     print(f"Created {path}")
 

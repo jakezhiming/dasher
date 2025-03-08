@@ -4,12 +4,11 @@ from constants import BASE_MOVE_SPEED, SPEED_BOOST_MULTIPLIER, JUMP_VELOCITY
 # Global variables for input state
 space_key_pressed = False
 d_key_pressed = False
-h_key_pressed = False
 show_debug = False  # Start with debug off
 
 def handle_input(player):
     """Handle keyboard input for player movement and debug toggle."""
-    global space_key_pressed, show_debug, d_key_pressed, h_key_pressed
+    global space_key_pressed, show_debug, d_key_pressed
     keys = pygame.key.get_pressed()
     
     # Toggle debug display with 'D' key (both uppercase and lowercase)
@@ -20,13 +19,6 @@ def handle_input(player):
         d_key_pressed = True
     elif not keys[pygame.K_d]:
         d_key_pressed = False
-    
-    # Toggle hitbox display with 'H' key
-    if keys[pygame.K_h] and not h_key_pressed:
-        player.show_hitbox = not player.show_hitbox
-        h_key_pressed = True
-    elif not keys[pygame.K_h]:
-        h_key_pressed = False
     
     move_speed = BASE_MOVE_SPEED * SPEED_BOOST_MULTIPLIER if player.speed_boost else BASE_MOVE_SPEED
     if not player.immobilized:
