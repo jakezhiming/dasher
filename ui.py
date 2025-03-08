@@ -5,6 +5,7 @@ from constants import (
     INVINCIBILITY_FROM_DAMAGE_DURATION
 )
 from utils import render_retro_text
+from sprite_loader import player_frames, get_frame
 
 heart_sprite = None
 heart_sprite_size = 0
@@ -198,17 +199,35 @@ def draw_status_bar(screen, player):
     message = get_status_message(player)
     
     # Calculate max width for messages (leave some margin on both sides)
-    max_message_width = WIDTH - 40
+    max_message_width = WIDTH - 80  # Reduced to make room for player sprite
+    
+    # Get player idle animation frame for the status bar
+    # Use the player's current animation frame to sync with the main animation
+    animation_key = 'idle_right'  # Always show player facing right in the status bar
+    frame_index = player.animation_frame % len(player_frames[animation_key])
+    player_icon = get_frame(animation_key, frame_index)
+    
+    # Scale down the player icon to fit in the status bar
+    icon_size = 40
+    aspect_ratio = player_icon.get_width() / player_icon.get_height()
+    icon_width = int(icon_size * aspect_ratio)
+    icon_height = icon_size
+    player_icon = pygame.transform.scale(player_icon, (icon_width, icon_height))
+    
+    # Draw the player icon to the left of the message
+    icon_x = 10
+    icon_y = PLAY_AREA_HEIGHT + (STATUS_BAR_HEIGHT - icon_height) // 2
+    screen.blit(player_icon, (icon_x, icon_y))
+    
+    # Display current message in first row
+    message_text = render_retro_text(message, 16, BLACK, max_message_width)
+    screen.blit(message_text, (60, PLAY_AREA_HEIGHT + 20))
     
     # Display previous message in second row (slightly smaller and faded)
     previous_message = message_manager.get_previous_message()
     if previous_message:
         prev_text = render_retro_text(previous_message, 14, DARK_GREY, max_message_width)
-        screen.blit(prev_text, (20, PLAY_AREA_HEIGHT + STATUS_BAR_HEIGHT - 35))
-    
-    # Display current message in first row
-    message_text = render_retro_text(message, 16, BLACK, max_message_width)
-    screen.blit(message_text, (20, PLAY_AREA_HEIGHT + 20))
+        screen.blit(prev_text, (60, PLAY_AREA_HEIGHT + STATUS_BAR_HEIGHT - 35))
 
 def draw_debug_info(screen, player):
     y_pos = 50  # Start position for debug info

@@ -4,6 +4,8 @@ from constants import (
     RED, DARK_RED, PURPLE, BLACK
 )
 from utils import collide
+from sprite_loader import get_frame, load_player_sprites, player_frames
+import input_handler
 
 class Player:
     def __init__(self):
@@ -35,39 +37,247 @@ class Player:
         self.furthest_right_position = self.x  # Track the furthest right position
         self.prev_x = self.x  # Added to track previous x position
         self.prev_y = self.y  # Added to track previous y position
+        
+        # Animation properties
+        self.animation_frame = 0
+        self.animation_speed = 0.2  # Frames per second
+        self.animation_timer = 0
+        self.dust_animation_frame = 0
+        self.dust_animation_timer = 0
+        self.show_dust = False
+        self.double_jump_dust_frame = 0
+        self.double_jump_dust_timer = 0
+        self.show_double_jump_dust = False
+        self.hurt_animation_active = False
+        self.hurt_animation_timer = 0
+        self.hurt_animation_duration = 500  # Show hurt animation for 500ms
+        
+        # Death animation properties
+        self.dying = False
+        self.death_animation_frame = 0
+        self.death_animation_timer = 0
+        self.death_animation_complete = False
+        self.death_animation_duration = 1500  # Total duration of death animation in ms
+        
+        # Sprite dimensions (will be updated when sprites are loaded)
+        self.sprite_width = self.width
+        self.sprite_height = self.height
+        self.sprite_offset_x = 0
+        self.sprite_offset_y = 0
+        
+        # Debug mode for showing hitbox
+        self.show_hitbox = False
 
     def draw(self, screen, camera_x):
         screen_x = self.x - camera_x
         
-        # Determine player color
-        if self.invincible:
-            # Flash every 100ms
-            current_time = pygame.time.get_ticks()
-            if current_time - self.invincible_flash_timer > 100:
+        # Determine which animation to use based on player state
+        animation_key = self._get_animation_key()
+        
+        # Update animation frame
+        current_time = pygame.time.get_ticks()
+        
+        # Handle death animation separately with slower speed
+        if self.dying:
+            if current_time - self.death_animation_timer > 150:  # Slower animation for death
+                self.death_animation_frame += 1
+                self.death_animation_timer = current_time
+                
+                # Check if death animation is complete
+                if self.death_animation_frame >= len(player_frames['death_right']):
+                    self.death_animation_complete = True
+                    self.death_animation_frame = len(player_frames['death_right']) - 1  # Stay on last frame
+        else:
+            # Normal animation update
+            # Adjust animation speed for running with speed boost
+            animation_speed = self.animation_speed
+            if self.speed_boost and 'run' in animation_key:
+                # Make running animation faster when speed boost is active
+                animation_speed *= 0.6  # 40% faster animation
+                
+            if current_time - self.animation_timer > 1000 * animation_speed:
+                self.animation_frame += 1
+                self.animation_timer = current_time
+        
+        # Get the current frame
+        if self.dying:
+            # Use death animation frame
+            dir_suffix = '_right' if self.direction == 'right' else '_left'
+            frame = get_frame('death' + dir_suffix, self.death_animation_frame)
+        else:
+            # Use normal animation frame
+            frame = get_frame(animation_key, self.animation_frame)
+        
+        # Calculate sprite position (center the sprite on the player's hitbox)
+        self.sprite_width = frame.get_width()
+        self.sprite_height = frame.get_height()
+        
+        # Center the sprite horizontally within the hitbox
+        self.sprite_offset_x = (self.width - self.sprite_width) // 2
+        
+        # Align the bottom of the sprite with the bottom of the hitbox
+        # This ensures the feet are at the bottom of the collision box
+        self.sprite_offset_y = self.height - self.sprite_height
+        
+        # Draw the sprite
+        sprite_x = screen_x + self.sprite_offset_x
+        sprite_y = self.y + self.sprite_offset_y
+        
+        # If invincible and not dying, make the sprite flash
+        if self.invincible and not self.dying:
+            # Flash every 50ms
+            if current_time - self.invincible_flash_timer > 50:
                 self.invincible_flash = not self.invincible_flash
                 self.invincible_flash_timer = current_time
             
-            if self.invincible_from_damage:
-                # Flash between DARK_RED and RED for damage invincibility
-                color = DARK_RED if self.invincible_flash else RED
-            else:
-                # Flash between PURPLE and RED for power-up invincibility
-                color = PURPLE if self.invincible_flash else RED
+            # Only draw the sprite every other flash cycle
+            if not self.invincible_flash:
+                screen.blit(frame, (sprite_x, sprite_y))
         else:
-            color = RED
-            
-        pygame.draw.rect(screen, color, (screen_x, self.y, self.width, self.height))
+            # Draw normally if not invincible or if dying
+            screen.blit(frame, (sprite_x, sprite_y))
         
-        # Eyes based on direction
-        eye_y = int(self.y + 10)
-        if self.direction == 'right':
-            pygame.draw.circle(screen, BLACK, (int(screen_x + 30), eye_y), 5)
-            pygame.draw.circle(screen, BLACK, (int(screen_x + 40), eye_y), 5)
+        # Draw dust effects if needed and not dying
+        if not self.dying:
+            self._draw_dust_effects(screen, screen_x)
+        
+        # Draw hitbox for debugging if enabled
+        if self.show_hitbox or input_handler.show_debug:
+            pygame.draw.rect(screen, (255, 0, 0, 128), (screen_x, self.y, self.width, self.height), 1)
+
+    def _get_animation_key(self):
+        """Determine which animation to use based on player state."""
+        # Determine direction suffix
+        dir_suffix = '_right' if self.direction == 'right' else '_left'
+        
+        # Check for special states in priority order
+        
+        # 1. Hurt animation when taking damage
+        if self.invincible_from_damage:
+            # Check if we're within the hurt animation duration
+            current_time = pygame.time.get_ticks()
+            if current_time - self.hurt_animation_timer < self.hurt_animation_duration:
+                return 'hurt' + dir_suffix
+        
+        # 2. Invincibility from power-up
+        if self.invincible and not self.invincible_from_damage:
+            return 'invincible' + dir_suffix
+        
+        # 3. Flying
+        elif self.flying:
+            return 'flying' + dir_suffix
+        
+        # 4. Jumping/Double jumping
+        elif self.jumping:
+            if self.double_jumped:
+                return 'double_jump' + dir_suffix
+            else:
+                return 'jump' + dir_suffix
+        
+        # 5. Speed boost (when running)
+        elif self.speed_boost and self.vx != 0:
+            return 'speed_boost' + dir_suffix
+            
+        # 6. Default: running or idle
+        elif self.vx != 0:
+            return 'run' + dir_suffix
         else:
-            pygame.draw.circle(screen, BLACK, (int(screen_x + 10), eye_y), 5)
-            pygame.draw.circle(screen, BLACK, (int(screen_x + 20), eye_y), 5)
+            return 'idle' + dir_suffix
+
+    def _draw_dust_effects(self, screen, screen_x):
+        """Draw dust effects for walking and double jumping."""
+        current_time = pygame.time.get_ticks()
+        
+        # Draw walking dust if player is moving on the ground
+        if not self.jumping and abs(self.vx) > 0:
+            # Show dust effect
+            if not self.show_dust:
+                self.show_dust = True
+                self.dust_animation_frame = 0
+                self.dust_animation_timer = current_time
+            
+            # Update dust animation
+            dust_animation_speed = 0.1
+            # Speed up dust animation when speed boost is active
+            if self.speed_boost:
+                dust_animation_speed *= 0.6  # 40% faster dust animation
+                
+            if current_time - self.dust_animation_timer > 1000 * dust_animation_speed:
+                self.dust_animation_frame += 1
+                self.dust_animation_timer = current_time
+                
+                # Reset animation when complete
+                if self.dust_animation_frame >= len(player_frames['dust_walk']):
+                    self.dust_animation_frame = 0
+            
+            # Draw dust at player's feet
+            dust_frame = get_frame('dust_walk', self.dust_animation_frame)
+            
+            # Position dust based on player direction
+            if self.direction == 'right':
+                dust_x = screen_x - 20  # Behind player when moving right
+            else:
+                dust_x = screen_x + self.width - 10  # Behind player when moving left
+                
+            dust_y = self.y + self.height - 20  # At player's feet
+            
+            # Draw more dust particles when speed boost is active
+            screen.blit(dust_frame, (dust_x, dust_y))
+            
+            if self.speed_boost:
+                # Add extra dust particles when speed boost is active
+                if self.direction == 'right':
+                    screen.blit(dust_frame, (dust_x - 15, dust_y + 5))
+                else:
+                    screen.blit(dust_frame, (dust_x + 15, dust_y + 5))
+        else:
+            self.show_dust = False
+        
+        # Double jump dust
+        if self.show_double_jump_dust:
+            # Speed up double jump dust animation when speed boost is active
+            double_jump_dust_speed = 100
+            if self.speed_boost:
+                double_jump_dust_speed = 60  # 40% faster animation
+                
+            if current_time - self.double_jump_dust_timer > double_jump_dust_speed:
+                self.double_jump_dust_frame += 1
+                self.double_jump_dust_timer = current_time
+                
+                # Check if we've reached the end of the double jump dust animation
+                if self.double_jump_dust_frame >= len(player_frames['dust_double_jump']):
+                    self.show_double_jump_dust = False
+            
+            # Only draw if the animation is still active
+            if self.show_double_jump_dust:
+                dust_frame = get_frame('dust_double_jump', self.double_jump_dust_frame)
+                
+                # Position dust at the player's feet
+                dust_x = screen_x + (self.width - dust_frame.get_width()) // 2
+                dust_y = self.y + self.height - dust_frame.get_height()
+                
+                # Draw the dust effect
+                screen.blit(dust_frame, (dust_x, dust_y))
+                
+                # Add extra effects for speed boost
+                if self.speed_boost:
+                    # Draw a slightly larger version behind for a more dramatic effect
+                    larger_frame = pygame.transform.scale(
+                        dust_frame, 
+                        (int(dust_frame.get_width() * 1.2), int(dust_frame.get_height() * 1.2))
+                    )
+                    larger_x = dust_x - (larger_frame.get_width() - dust_frame.get_width()) // 2
+                    larger_y = dust_y - (larger_frame.get_height() - dust_frame.get_height()) // 2
+                    screen.blit(larger_frame, (larger_x, larger_y))
 
     def update(self, floors, platforms, obstacles, coins, power_ups):
+        # If player is dying, just update the death animation and return
+        if self.dying:
+            # Check if death animation is complete
+            if self.death_animation_complete:
+                return True  # Return True to indicate game over
+            return False  # Return False to continue showing death animation
+            
         if self.immobilized:
             if pygame.time.get_ticks() - self.immobilized_timer > IMMOBILIZED_DURATION:
                 self.immobilized = False
@@ -86,6 +296,12 @@ class Player:
         
         # Move horizontally first
         self.x += self.vx
+        
+        # Update player direction based on velocity
+        if self.vx > 0:
+            self.direction = 'right'
+        elif self.vx < 0:
+            self.direction = 'left'
         
         # Check for horizontal collisions with obstacles
         for obstacle in obstacles:
@@ -192,11 +408,16 @@ class Player:
                 self.y = self.respawn_y
                 self.vx = 0
                 self.vy = 0
+                
+                # Start invincibility and hurt animation
                 self.start_invincibility(from_damage=True)
+                
                 self.immobilized = True
                 self.immobilized_timer = pygame.time.get_ticks()
             else:
-                return True  # Return True to indicate game over
+                # Start death animation
+                self.start_death_animation()
+                return False  # Return False to continue showing death animation
 
         # Handle damage from obstacle collision
         if obstacle_collision and not self.invincible:
@@ -207,7 +428,10 @@ class Player:
                 set_hearts_flash()  # Trigger heart flashing effect
                 if self.lives > 1:
                     message_manager.shown_messages.discard("last_life")
+                
+                # Start invincibility and hurt animation
                 self.start_invincibility(from_damage=True)
+                
                 # Push player away from obstacle slightly to prevent immediate re-collision
                 if collided_obstacle:
                     # Determine push direction based on collision side
@@ -218,7 +442,9 @@ class Player:
                         # Player is to the right of obstacle center
                         self.x = collided_obstacle.x + collided_obstacle.width + 5
             else:
-                return True  # Return True to indicate game over
+                # Start death animation
+                self.start_death_animation()
+                return False  # Return False to continue showing death animation
 
         # Collect coins
         for coin in coins[:]:
@@ -266,6 +492,35 @@ class Player:
         self.invincible = True
         self.invincible_timer = pygame.time.get_ticks()
         self.invincible_from_damage = from_damage
+        
+        # Reset the hurt animation timer when taking damage
+        if from_damage:
+            self.hurt_animation_timer = pygame.time.get_ticks()
+            # Reset animation frame to start the hurt animation from the beginning
+            self.animation_frame = 0
+
+    def start_death_animation(self):
+        """Start the death animation sequence."""
+        self.dying = True
+        self.death_animation_frame = 0
+        self.death_animation_timer = pygame.time.get_ticks()
+        self.death_animation_complete = False
+        
+        # Stop all movement
+        self.vx = 0
+        self.vy = 0
+        
+        # Disable other states
+        self.invincible = False
+        self.jumping = False
+        self.double_jumped = False
+        self.flying = False
+        self.speed_boost = False
+        self.immobilized = False
+        
+        # Display a death message
+        from ui import message_manager
+        message_manager.set_message("Oh no! You died!")
 
     def add_life(self):
         """Add a life to the player and reset the last_life message flag."""
@@ -275,3 +530,10 @@ class Player:
         message_manager.shown_messages.discard("last_life")
         # Display a message when a life is added
         message_manager.set_message("Yippee! Extra life collected!") 
+        
+    def perform_double_jump(self):
+        """Perform a double jump and show the dust effect."""
+        self.double_jumped = True
+        self.show_double_jump_dust = True
+        self.double_jump_dust_frame = 0
+        self.double_jump_dust_timer = pygame.time.get_ticks() 
