@@ -1,5 +1,6 @@
 import pygame
 import os
+from constants import PLAYER_WIDTH, PLAYER_HEIGHT
 
 # Dictionary to store all loaded sprite sheets
 player_sprites = {
@@ -44,8 +45,8 @@ player_frames = {
 }
 
 # Target size for player sprites (should match player's collision box)
-PLAYER_WIDTH = 50
-PLAYER_HEIGHT = 50
+PLAYER_SPRITE_WIDTH = PLAYER_WIDTH
+PLAYER_SPRITE_HEIGHT = PLAYER_HEIGHT
 
 def load_player_sprites():
     """Load all player sprite sheets and extract animation frames."""
@@ -143,11 +144,11 @@ def extract_frames(action, num_frames, right_key, left_key):
         
         # Calculate new dimensions that maintain aspect ratio
         if aspect_ratio > 1:  # Wider than tall
-            new_width = PLAYER_WIDTH
-            new_height = int(PLAYER_WIDTH / aspect_ratio)
+            new_width = PLAYER_SPRITE_WIDTH
+            new_height = int(PLAYER_SPRITE_WIDTH / aspect_ratio)
         else:  # Taller than wide or square
-            new_height = PLAYER_HEIGHT
-            new_width = int(PLAYER_HEIGHT * aspect_ratio)
+            new_height = PLAYER_SPRITE_HEIGHT
+            new_width = int(PLAYER_SPRITE_HEIGHT * aspect_ratio)
         
         # Scale the frame
         scaled_frame = pygame.transform.scale(frame, (new_width, new_height))
@@ -181,7 +182,7 @@ def extract_dust_frames(action, num_frames):
         # Scale the dust effect to be proportional to the player size
         # Dust should be about 60% of player size
         dust_scale = 0.6
-        new_width = int(PLAYER_WIDTH * dust_scale)
+        new_width = int(PLAYER_SPRITE_WIDTH * dust_scale)
         new_height = int(new_width * (sheet_height / frame_width))  # Maintain aspect ratio
         
         # Scale the frame
@@ -217,6 +218,6 @@ def get_frame(animation_key, frame_index):
         return player_frames[animation_key][frame_index]
     else:
         # Return a placeholder if the animation doesn't exist
-        placeholder = pygame.Surface((PLAYER_WIDTH, PLAYER_HEIGHT), pygame.SRCALPHA)
+        placeholder = pygame.Surface((PLAYER_SPRITE_WIDTH, PLAYER_SPRITE_HEIGHT), pygame.SRCALPHA)
         placeholder.fill((255, 0, 255))  # Fill with magenta for visibility
         return placeholder 

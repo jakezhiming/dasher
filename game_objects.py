@@ -1,7 +1,8 @@
 import pygame
 from constants import (
     BROWN, GREEN, YELLOW, BLUE, CYAN, MAGENTA, RED,
-    PLAY_AREA_HEIGHT, WIDTH
+    PLAY_AREA_HEIGHT, WIDTH, FLOOR_HEIGHT, COIN_SIZE,
+    POWERUP_SIZE, DEFAULT_OBSTACLE_SIZE
 )
 import math
 import random
@@ -31,8 +32,8 @@ def load_textures():
             coin_path = "assets/images/powerups/coin.png"
             coin_sprite = pygame.image.load(coin_path).convert_alpha()
             # Resize to match the game's dimensions if needed
-            if coin_sprite.get_width() != 20 or coin_sprite.get_height() != 20:
-                coin_sprite = pygame.transform.scale(coin_sprite, (20, 20))
+            if coin_sprite.get_width() != COIN_SIZE or coin_sprite.get_height() != COIN_SIZE:
+                coin_sprite = pygame.transform.scale(coin_sprite, (COIN_SIZE, COIN_SIZE))
             print("Successfully loaded coin sprite")
         except Exception as e:
             print(f"Error loading coin sprite: {e}")
@@ -45,8 +46,8 @@ def load_textures():
                 path = f"assets/images/powerups/powerup_{p_type}.png"
                 powerup_sprites[p_type] = pygame.image.load(path).convert_alpha()
                 # Resize to match the game's dimensions if needed
-                if powerup_sprites[p_type].get_width() != 20 or powerup_sprites[p_type].get_height() != 20:
-                    powerup_sprites[p_type] = pygame.transform.scale(powerup_sprites[p_type], (20, 20))
+                if powerup_sprites[p_type].get_width() != POWERUP_SIZE or powerup_sprites[p_type].get_height() != POWERUP_SIZE:
+                    powerup_sprites[p_type] = pygame.transform.scale(powerup_sprites[p_type], (POWERUP_SIZE, POWERUP_SIZE))
             print("Successfully loaded power-up sprites")
         except Exception as e:
             print(f"Error loading power-up sprites: {e}")
@@ -64,13 +65,13 @@ def load_textures():
                 except Exception as e:
                     print(f"Error loading obstacle sprite {o_type}: {e}")
                     # Create a fallback colored square if sprite loading fails
-                    fallback = pygame.Surface((30, 30))
+                    fallback = pygame.Surface((DEFAULT_OBSTACLE_SIZE, DEFAULT_OBSTACLE_SIZE))
                     fallback.fill(GREEN)
                     obstacle_sprites.append(fallback)
             
             # If no obstacle sprites were loaded successfully, create a default one
             if not obstacle_sprites:
-                default = pygame.Surface((30, 30))
+                default = pygame.Surface((DEFAULT_OBSTACLE_SIZE, DEFAULT_OBSTACLE_SIZE))
                 default.fill(GREEN)
                 obstacle_sprites.append(default)
                 
@@ -88,7 +89,7 @@ class Floor:
     def __init__(self, x, width):
         self.x = x
         self.width = width
-        self.height = 20
+        self.height = FLOOR_HEIGHT
         self.y = PLAY_AREA_HEIGHT - self.height
 
     def draw(self, screen, camera_x):
@@ -156,7 +157,7 @@ class Platform:
                 screen.blit(partial_texture, (tile_x, self.y))
 
 class Obstacle:
-    def __init__(self, x, y, width=30, height=30):
+    def __init__(self, x, y, width=DEFAULT_OBSTACLE_SIZE, height=DEFAULT_OBSTACLE_SIZE):
         self.x = x
         self.y = y
         self.width = width
@@ -268,8 +269,8 @@ class Coin:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.width = 20
-        self.height = 20
+        self.width = COIN_SIZE
+        self.height = COIN_SIZE
         # Animation variables
         self.animation_frame = 0
         self.animation_speed = 0.05
@@ -313,12 +314,11 @@ class PowerUp:
     def __init__(self, x, y, type):
         self.x = x
         self.y = y
+        self.width = POWERUP_SIZE
+        self.height = POWERUP_SIZE
         self.radius = 10
         self.type = type
         # Keep width and height properties for existing collision detection
-        self.width = self.radius * 2
-        self.height = self.radius * 2
-        # Update center coordinates
         self.update_center()
         # Animation variables
         self.animation_frame = 0

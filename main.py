@@ -4,8 +4,9 @@ import random
 # Import from our modules
 from constants import (
     WIDTH, HEIGHT, PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT,
-    GAME_RUNNING, GAME_LOST_MESSAGE, GAME_OVER,
-    BLUE, BLACK, RED
+    GAME_RUNNING, GAME_LOST_MESSAGE, GAME_OVER, GAME_OVER_DISPLAY_DURATION,
+    BLUE, BLACK, RED, SEGMENT_LENGTH_MULTIPLIER, WELCOME_MESSAGE,
+    CONTROLS_MESSAGE, CONTROLS_MESSAGE_DELAY, PLAYER_INITIAL_X, PLAYER_INITIAL_Y
 )
 from utils import render_retro_text, draw_background
 from player import Player
@@ -30,9 +31,9 @@ load_player_sprites()  # Load player sprites
 # Initialize game
 player = Player()
 camera_x = 0
-rightmost_floor_end = 800
+rightmost_floor_end = WIDTH
 # Create initial floor that's wide enough for the starting area
-floors = [Floor(0, 800)]
+floors = [Floor(0, WIDTH)]
 platforms = []
 obstacles = []
 coins = []
@@ -43,9 +44,9 @@ game_over_timer = 0
 player_has_moved = False
 
 # Set initial messages
-message_manager.set_message("Welcome to Dasher! Use arrow keys to move and SPACE to jump.")
+message_manager.set_message(WELCOME_MESSAGE)
 # Add a message about the hitbox toggle after a delay
-pygame.time.set_timer(pygame.USEREVENT, 3000)  # 3 second delay
+pygame.time.set_timer(pygame.USEREVENT, CONTROLS_MESSAGE_DELAY)
 show_controls_message = True
 
 # Main loop
@@ -63,7 +64,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.USEREVENT and show_controls_message:
-            message_manager.set_message("Press 'H' to toggle hitbox visibility, 'D' for debug info.")
+            message_manager.set_message(CONTROLS_MESSAGE)
             show_controls_message = False
 
     if game_state == GAME_RUNNING:
@@ -121,7 +122,7 @@ while running:
     
     elif game_state == GAME_LOST_MESSAGE:
         # Show game over message for a few seconds
-        if pygame.time.get_ticks() - game_over_timer > 3000:  # 3 seconds
+        if pygame.time.get_ticks() - game_over_timer > GAME_OVER_DISPLAY_DURATION:
             game_state = GAME_OVER
         
         # Continue drawing the game state
@@ -152,8 +153,8 @@ while running:
         # Reset the game
         player = Player()
         camera_x = 0
-        rightmost_floor_end = 800
-        floors = [Floor(0, 800)]
+        rightmost_floor_end = WIDTH
+        floors = [Floor(0, WIDTH)]
         platforms = []
         obstacles = []
         coins = []

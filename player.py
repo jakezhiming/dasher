@@ -1,7 +1,9 @@
 import pygame
 from constants import (
     PLAY_AREA_HEIGHT, GRAVITY, INVINCIBILITY_DURATION, INVINCIBILITY_FROM_DAMAGE_DURATION, IMMOBILIZED_DURATION,
-    RED, DARK_RED, PURPLE, BLACK
+    RED, DARK_RED, PURPLE, BLACK, PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_INITIAL_X, PLAYER_INITIAL_Y,
+    PLAYER_ANIMATION_SPEED, HURT_ANIMATION_DURATION, DEATH_ANIMATION_DURATION, DEATH_ANIMATION_FRAME_DELAY,
+    SPEED_BOOST_ANIMATION_FACTOR, INITIAL_LIVES
 )
 from utils import collide
 from sprite_loader import get_frame, load_player_sprites, player_frames
@@ -9,10 +11,10 @@ import input_handler
 
 class Player:
     def __init__(self):
-        self.width = 50
-        self.height = 50
-        self.x = 100
-        self.y = PLAY_AREA_HEIGHT - self.height - 20
+        self.width = PLAYER_WIDTH
+        self.height = PLAYER_HEIGHT
+        self.x = PLAYER_INITIAL_X
+        self.y = PLAYER_INITIAL_Y
         self.vx = 0
         self.vy = 0
         self.jumping = False
@@ -23,7 +25,7 @@ class Player:
         self.invincible_flash = False  # New variable to track flashing state
         self.invincible_flash_timer = 0  # Timer for flashing effect
         self.invincible_from_damage = False  # Track if invincibility is from damage
-        self.lives = 3
+        self.lives = INITIAL_LIVES
         self.score = 0
         self.coin_score = 0  # Separate score for coins
         self.speed_boost = False
@@ -40,7 +42,7 @@ class Player:
         
         # Animation properties
         self.animation_frame = 0
-        self.animation_speed = 0.2  # Frames per second
+        self.animation_speed = PLAYER_ANIMATION_SPEED
         self.animation_timer = 0
         self.dust_animation_frame = 0
         self.dust_animation_timer = 0
@@ -50,14 +52,14 @@ class Player:
         self.show_double_jump_dust = False
         self.hurt_animation_active = False
         self.hurt_animation_timer = 0
-        self.hurt_animation_duration = 500  # Show hurt animation for 500ms
+        self.hurt_animation_duration = HURT_ANIMATION_DURATION
         
         # Death animation properties
         self.dying = False
         self.death_animation_frame = 0
         self.death_animation_timer = 0
         self.death_animation_complete = False
-        self.death_animation_duration = 1500  # Total duration of death animation in ms
+        self.death_animation_duration = DEATH_ANIMATION_DURATION
         
         # Sprite dimensions (will be updated when sprites are loaded)
         self.sprite_width = self.width
@@ -76,7 +78,7 @@ class Player:
         
         # Handle death animation separately with slower speed
         if self.dying:
-            if current_time - self.death_animation_timer > 150:  # Slower animation for death
+            if current_time - self.death_animation_timer > DEATH_ANIMATION_FRAME_DELAY:
                 self.death_animation_frame += 1
                 self.death_animation_timer = current_time
                 
@@ -90,7 +92,7 @@ class Player:
             animation_speed = self.animation_speed
             if self.speed_boost and 'run' in animation_key:
                 # Make running animation faster when speed boost is active
-                animation_speed *= 0.6  # 40% faster animation
+                animation_speed *= SPEED_BOOST_ANIMATION_FACTOR
                 
             if current_time - self.animation_timer > 1000 * animation_speed:
                 self.animation_frame += 1

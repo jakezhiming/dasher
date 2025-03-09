@@ -3,7 +3,9 @@ import pygame
 from constants import (
     PLAY_AREA_HEIGHT, DIFFICULTY_START_DISTANCE, DIFFICULTY_MAX_DISTANCE,
     BASE_OBSTACLE_HEIGHT, BASE_OBSTACLE_WIDTH, MAX_OBSTACLE_CHANCE, MAX_PIT_CHANCE,
-    MIN_PIT_WIDTH, MAX_PIT_WIDTH, BASE_PIT_CHANCE, BASE_POWERUP_CHANCE
+    MIN_PIT_WIDTH, MAX_PIT_WIDTH, BASE_PIT_CHANCE, BASE_POWERUP_CHANCE,
+    SEGMENT_LENGTH_MULTIPLIER, GRID_CELL_SIZE, OBSTACLE_BUFFER,
+    MIN_PLATFORM_WIDTH, MAX_PLATFORM_WIDTH, PLATFORM_EDGE_BUFFER
 )
 from game_objects import Floor, Platform, Obstacle, Coin, PowerUp
 
@@ -17,7 +19,7 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
     difficulty_factor = min(1.0, progress / (DIFFICULTY_MAX_DISTANCE - DIFFICULTY_START_DISTANCE))
     
     # Generate a larger segment at once (3x the previous size)
-    segment_length = width * 3
+    segment_length = width * SEGMENT_LENGTH_MULTIPLIER
     segment_end_x = new_x + segment_length
     
     # Pre-calculate the visible right edge
@@ -27,16 +29,15 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
     generated_obstacles = []
     
     # Create a spatial grid for faster collision detection
-    grid_size = 100  # Size of each grid cell
     collision_grid = {}
     
     def add_to_collision_grid(obj, x, y, w, h):
         """Add an object to the collision grid for faster lookups"""
         # Calculate grid cells this object occupies
-        start_cell_x = int(x // grid_size)
-        end_cell_x = int((x + w) // grid_size)
-        start_cell_y = int(y // grid_size)
-        end_cell_y = int((y + h) // grid_size)
+        start_cell_x = int(x // GRID_CELL_SIZE)
+        end_cell_x = int((x + w) // GRID_CELL_SIZE)
+        start_cell_y = int(y // GRID_CELL_SIZE)
+        end_cell_y = int((y + h) // GRID_CELL_SIZE)
         
         # Add object to all cells it occupies
         for cell_x in range(start_cell_x, end_cell_x + 1):
@@ -51,10 +52,10 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
         test_rect = pygame.Rect(x, y, width, height)
         
         # Calculate grid cells to check
-        start_cell_x = int(x // grid_size)
-        end_cell_x = int((x + width) // grid_size)
-        start_cell_y = int(y // grid_size)
-        end_cell_y = int((y + height) // grid_size)
+        start_cell_x = int(x // GRID_CELL_SIZE)
+        end_cell_x = int((x + width) // GRID_CELL_SIZE)
+        start_cell_y = int(y // GRID_CELL_SIZE)
+        end_cell_y = int((y + height) // GRID_CELL_SIZE)
         
         # Check for collisions in relevant grid cells only
         for cell_x in range(start_cell_x, end_cell_x + 1):
@@ -62,8 +63,8 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 cell_key = (cell_x, cell_y)
                 if cell_key in collision_grid:
                     for _, obs_rect in collision_grid[cell_key]:
-                        # Add a small buffer around obstacles (10 pixels)
-                        buffer = 10
+                        # Add a small buffer around obstacles
+                        buffer = OBSTACLE_BUFFER
                         expanded_obs_rect = pygame.Rect(
                             obs_rect.x - buffer, 
                             obs_rect.y - buffer, 
@@ -90,15 +91,15 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
             
             # Always add a platform above the pit for the player to use
             # Ensure the platform width is appropriate for the pit width
-            max_platform_width = min(150, pit_width - 120)  # Ensure there's at least 120px of space (60px on each side)
-            min_platform_width = min(50, max_platform_width)  # Ensure min_platform_width is not greater than max_platform_width
+            max_platform_width = min(MAX_PLATFORM_WIDTH, pit_width - 2*PLATFORM_EDGE_BUFFER)  # Ensure there's at least buffer space on each side
+            min_platform_width = min(MIN_PLATFORM_WIDTH, max_platform_width)  # Ensure min_platform_width is not greater than max_platform_width
             
             if max_platform_width >= min_platform_width:
                 platform_width = random.randint(min_platform_width, max_platform_width)
                 
                 # Calculate valid range for platform placement
-                min_x_position = current_x - pit_width + 50  # 50px from left edge of pit
-                max_x_position = current_x - platform_width - 50  # 50px from right edge of pit
+                min_x_position = current_x - pit_width + PLATFORM_EDGE_BUFFER  # Buffer from left edge of pit
+                max_x_position = current_x - platform_width - PLATFORM_EDGE_BUFFER  # Buffer from right edge of pit
                 
                 # Ensure we have a valid range
                 if max_x_position > min_x_position:
@@ -114,7 +115,7 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
             else:
                 # If pit is too narrow for a platform, place a wider platform that extends beyond the pit
                 platform_width = 150
-                platform_x = current_x - pit_width - 50  # Place it starting before the pit
+                platform_x = current_x - pit_width - PLATFORM_EDGE_BUFFER  # Place it starting before the pit
                 platform_y = random.randint(100, PLAY_AREA_HEIGHT - 150)
                 new_platform = Platform(platform_x, platform_y, platform_width + 100)
                 platforms.append(new_platform)

@@ -1,5 +1,9 @@
 import pygame
-from constants import BASE_MOVE_SPEED, SPEED_BOOST_MULTIPLIER, JUMP_VELOCITY
+from constants import (
+    BASE_MOVE_SPEED, SPEED_BOOST_MULTIPLIER, JUMP_VELOCITY,
+    WIDTH, MAX_BACKTRACK_DISTANCE, CAMERA_RIGHT_BOUNDARY_FACTOR,
+    CAMERA_LEFT_BOUNDARY_FACTOR
+)
 
 # Global variables for input state
 space_key_pressed = False
@@ -56,16 +60,15 @@ def player_has_moved(player):
 
 def update_scroll(player, camera_x):
     """Update the camera position based on player movement."""
-    from constants import WIDTH, MAX_BACKTRACK_DISTANCE
     
     # Calculate dynamic left boundary based on furthest right position
     dynamic_left_boundary = max(0, player.furthest_right_position - MAX_BACKTRACK_DISTANCE)
     
     # Follow player when moving right
-    if player.x > camera_x + WIDTH * 0.5:
-        camera_x = player.x - WIDTH * 0.5
+    if player.x > camera_x + WIDTH * CAMERA_RIGHT_BOUNDARY_FACTOR:
+        camera_x = player.x - WIDTH * CAMERA_RIGHT_BOUNDARY_FACTOR
     # Follow player when moving left
-    elif player.x < camera_x + WIDTH * 0.3:
-        camera_x = max(dynamic_left_boundary, player.x - WIDTH * 0.3)
+    elif player.x < camera_x + WIDTH * CAMERA_LEFT_BOUNDARY_FACTOR:
+        camera_x = max(dynamic_left_boundary, player.x - WIDTH * CAMERA_LEFT_BOUNDARY_FACTOR)
     
     return camera_x 

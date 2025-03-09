@@ -1,5 +1,5 @@
 import pygame
-from constants import FONT_PATH
+from constants import FONT_PATH, LIGHT_BLUE, PLAY_AREA_HEIGHT
 
 # Font cache to store loaded fonts by size
 _font_cache = {}
@@ -78,6 +78,4 @@ def collide(rect1, rect2):
 
 def draw_background(screen):
     """Draw a solid background."""
-    from constants import LIGHT_BLUE, PLAY_AREA_HEIGHT
-
     screen.fill(LIGHT_BLUE, (0, 0, screen.get_width(), PLAY_AREA_HEIGHT)) 

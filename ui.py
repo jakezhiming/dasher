@@ -2,13 +2,15 @@ import pygame
 from constants import (
     PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH, HEIGHT,
     BLACK, DARK_GREY, GRAY, RED,
-    INVINCIBILITY_FROM_DAMAGE_DURATION
+    INVINCIBILITY_FROM_DAMAGE_DURATION, HEART_SPRITE_PATH,
+    HEART_SPRITE_SIZE, MESSAGE_CHAR_DELAY, DEFAULT_MESSAGE_DELAY,
+    WHITE_OVERLAY
 )
 from utils import render_retro_text
 from sprite_loader import player_frames, get_frame
 
 heart_sprite = None
-heart_sprite_size = 0
+heart_sprite_size = HEART_SPRITE_SIZE
 heart_flash_time = 0
 heart_flash_duration = INVINCIBILITY_FROM_DAMAGE_DURATION 
 
@@ -16,10 +18,9 @@ def load_heart_sprite():
     """Load the heart sprite image."""
     global heart_sprite, heart_sprite_size
     try:
-        heart_path = "assets/images/stats/heart pixel art 32x32.png"
-        heart_sprite = pygame.image.load(heart_path).convert_alpha()
-        heart_sprite_size = 32
-        print(f"Successfully loaded heart sprite from {heart_path}")
+        heart_sprite = pygame.image.load(HEART_SPRITE_PATH).convert_alpha()
+        heart_sprite_size = HEART_SPRITE_SIZE
+        print(f"Successfully loaded heart sprite from {HEART_SPRITE_PATH}")
     except Exception as e:
         print(f"Error loading heart sprite: {e}")
         exit()
@@ -29,7 +30,7 @@ def set_hearts_flash():
     global heart_flash_time
     heart_flash_time = pygame.time.get_ticks()
 
-def draw_heart(screen, x, y, size=32, color=None, flashing=False):
+def draw_heart(screen, x, y, size=HEART_SPRITE_SIZE, color=None, flashing=False):
     """Draw a heart at the specified position with the given size."""
     global heart_sprite, heart_sprite_size
     
@@ -44,7 +45,7 @@ def draw_heart(screen, x, y, size=32, color=None, flashing=False):
     if flashing:
         # Create a white overlay
         white_overlay = pygame.Surface(sprite_to_use.get_size()).convert_alpha()
-        white_overlay.fill((255, 255, 255, 128))  # Semi-transparent white
+        white_overlay.fill(WHITE_OVERLAY)  # Semi-transparent white
         sprite_to_use.blit(white_overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
     
     # Scale the sprite if needed
@@ -60,9 +61,9 @@ class StatusMessageManager:
         self.target_message = ""
         self.display_index = 0
         self.last_char_time = 0
-        self.char_delay = 5  # Milliseconds between characters
+        self.char_delay = MESSAGE_CHAR_DELAY  # Milliseconds between characters
         self.last_default_time = 0
-        self.default_message_delay = 5000  # 5 seconds between default messages
+        self.default_message_delay = DEFAULT_MESSAGE_DELAY  # 5 seconds between default messages
         self.default_message_index = 0
         
         # Keep track of the last two messages
