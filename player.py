@@ -8,6 +8,9 @@ from constants import (
 from utils import collide
 from sprite_loader import get_frame, load_player_sprites, player_frames
 import input_handler
+import math
+import random
+from collection_effects import effect_manager
 
 class Player:
     def __init__(self):
@@ -483,11 +486,16 @@ class Player:
         for coin in coins[:]:
             if collide(self, coin):
                 self.coin_score += 50
+                # Create collection effect at the coin's position
+                effect_manager.create_coin_effect(coin.x, coin.y)
                 coins.remove(coin)
 
         # Collect power-ups
         for power_up in power_ups[:]:
             if collide(self, power_up):
+                # Create collection effect at the power-up's position
+                effect_manager.create_powerup_effect(power_up.x, power_up.y, power_up.type)
+                
                 if power_up.type == 'speed':
                     self.speed_boost = True
                     self.speed_boost_timer = pygame.time.get_ticks()

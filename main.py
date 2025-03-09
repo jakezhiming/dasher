@@ -15,6 +15,7 @@ from ui import draw_status_bar, draw_debug_info, message_manager
 import input_handler
 from level_generator import generate_new_segment, remove_old_objects
 from sprite_loader import load_player_sprites
+from collection_effects import effect_manager
 
 # Initialize Pygame
 pygame.init()
@@ -90,6 +91,9 @@ while running:
         for obstacle in obstacles:
             obstacle.update(dt)
         
+        # Update collection effects
+        effect_manager.update(dt)
+        
         if camera_x + WIDTH > rightmost_floor_end - 600:
             rightmost_floor_end = generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, rightmost_floor_end, camera_x, WIDTH)
         
@@ -108,6 +112,10 @@ while running:
         for power_up in power_ups:
             power_up.draw(screen, camera_x)
         player.draw(screen, camera_x)
+        
+        # Draw collection effects
+        effect_manager.draw(screen, camera_x)
+        
         draw_status_bar(screen, player)
         
         # Draw debug info if enabled
@@ -138,6 +146,10 @@ while running:
         for power_up in power_ups:
             power_up.draw(screen, camera_x)
         player.draw(screen, camera_x)
+        
+        # Draw collection effects
+        effect_manager.draw(screen, camera_x)
+        
         draw_status_bar(screen, player)
         
         # Draw game over text

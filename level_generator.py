@@ -5,7 +5,8 @@ from constants import (
     BASE_OBSTACLE_CHANCE, MAX_OBSTACLE_CHANCE, MAX_PIT_CHANCE,
     MIN_PIT_WIDTH, MAX_PIT_WIDTH, BASE_PIT_CHANCE, BASE_POWERUP_CHANCE,
     SEGMENT_LENGTH_MULTIPLIER, GRID_CELL_SIZE, OBSTACLE_BUFFER,
-    MIN_PLATFORM_WIDTH, MAX_PLATFORM_WIDTH, PLATFORM_EDGE_BUFFER
+    MIN_PLATFORM_WIDTH, MAX_PLATFORM_WIDTH, PLATFORM_EDGE_BUFFER,
+    FLOOR_HEIGHT
 )
 from game_objects import Floor, Platform, Obstacle, Coin, PowerUp
 
@@ -354,7 +355,7 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 else:
                     # Place on the floor (original behavior)
                     coin_x = current_x - floor_width + random.randint(0, floor_width - 20)
-                    coin_y = PLAY_AREA_HEIGHT - 70
+                    coin_y = PLAY_AREA_HEIGHT - FLOOR_HEIGHT - 30  # 30px above the floor, matching platform placement
                     
                     if not would_overlap_with_obstacle(coin_x, coin_y, 20, 20):
                         new_coin = Coin(coin_x, coin_y)
@@ -394,7 +395,7 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 else:
                     # Place on the floor (original behavior)
                     powerup_x = current_x - floor_width + random.randint(0, floor_width - 20)
-                    powerup_y = PLAY_AREA_HEIGHT - 70
+                    powerup_y = PLAY_AREA_HEIGHT - FLOOR_HEIGHT - 30  # 30px above the floor, matching platform placement
                     
                     if not would_overlap_with_obstacle(powerup_x, powerup_y, 20, 20):
                         new_powerup = PowerUp(
