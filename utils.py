@@ -70,7 +70,19 @@ def render_retro_text(text, size, color, max_width=None):
     return text_surface
 
 def collide(rect1, rect2):
-    """Check if two rectangles collide."""
+    """Check if two rectangles collide.
+    
+    For obstacles with custom collision boxes, use their get_collision_rect method.
+    """
+    # Check if rect2 is an obstacle with a custom collision box
+    if hasattr(rect2, 'get_collision_rect'):
+        collision_rect = rect2.get_collision_rect()
+        return (rect1.x < collision_rect.x + collision_rect.width and
+                rect1.x + rect1.width > collision_rect.x and
+                rect1.y < collision_rect.y + collision_rect.height and
+                rect1.y + rect1.height > collision_rect.y)
+    
+    # Standard collision check for regular objects
     return (rect1.x < rect2.x + rect2.width and
             rect1.x + rect1.width > rect2.x and
             rect1.y < rect2.y + rect2.height and

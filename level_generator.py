@@ -2,7 +2,7 @@ import random
 import pygame
 from constants import (
     PLAY_AREA_HEIGHT, DIFFICULTY_START_DISTANCE, DIFFICULTY_MAX_DISTANCE,
-    BASE_OBSTACLE_HEIGHT, BASE_OBSTACLE_WIDTH, MAX_OBSTACLE_CHANCE, MAX_PIT_CHANCE,
+    BASE_OBSTACLE_CHANCE, MAX_OBSTACLE_CHANCE, MAX_PIT_CHANCE,
     MIN_PIT_WIDTH, MAX_PIT_WIDTH, BASE_PIT_CHANCE, BASE_POWERUP_CHANCE,
     SEGMENT_LENGTH_MULTIPLIER, GRID_CELL_SIZE, OBSTACLE_BUFFER,
     MIN_PLATFORM_WIDTH, MAX_PLATFORM_WIDTH, PLATFORM_EDGE_BUFFER
@@ -144,82 +144,186 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
         # Only generate obstacles and collectibles if they'll be off-screen
         if current_x > visible_right_edge:
             # Obstacle (on floor or platform)
-            base_obstacle_chance = 0.3
-            obstacle_chance = base_obstacle_chance + (MAX_OBSTACLE_CHANCE - base_obstacle_chance) * difficulty_factor
+            obstacle_chance = BASE_OBSTACLE_CHANCE + (MAX_OBSTACLE_CHANCE - BASE_OBSTACLE_CHANCE) * difficulty_factor
             
             if random.random() < obstacle_chance and floor_width >= 100:
-                # Calculate obstacle position
-                obstacle_x = current_x - floor_width + random.randint(50, max(51, floor_width - 50))
+                # Determine obstacle type based on difficulty and randomness
+                obstacle_types = ['spikes', 'fire', 'saw', 'bomb']
                 
-                # Calculate obstacle size based on difficulty
-                min_size = 30  # Minimum size to ensure visibility
-                
-                # Determine if we should create a special shape
-                shape_type = random.choices(
-                    ['normal', 'tall', 'wide', 'small', 'large'],
-                    weights=[0.5, 0.15, 0.15, 0.1, 0.1]
-                )[0]
-                
-                if shape_type == 'tall':
-                    # Create a tall obstacle (good for spikes)
-                    obstacle_width = random.randint(min_size, 40)
-                    obstacle_height = random.randint(50, 80 + int(30 * difficulty_factor))
-                elif shape_type == 'wide':
-                    # Create a wide obstacle (good for lava)
-                    obstacle_width = random.randint(60, 100 + int(40 * difficulty_factor))
-                    obstacle_height = random.randint(min_size, 40)
-                elif shape_type == 'small':
-                    # Create a small obstacle (good for rocks)
-                    obstacle_width = random.randint(min_size, 40)
-                    obstacle_height = random.randint(min_size, 40)
-                elif shape_type == 'large':
-                    # Create a large obstacle (good for crates)
-                    obstacle_width = random.randint(50, 70 + int(30 * difficulty_factor))
-                    obstacle_height = random.randint(50, 70 + int(30 * difficulty_factor))
+                # Adjust weights based on difficulty
+                # As difficulty increases, more dangerous obstacles become more common
+                if difficulty_factor < 0.3:
+                    # Early game: more spikes, less of other types
+                    weights = [0.7, 0.2, 0.1, 0.0]  # No bombs early on
+                elif difficulty_factor < 0.6:
+                    # Mid game: balanced distribution
+                    weights = [0.4, 0.3, 0.2, 0.1]  # Introduce bombs
                 else:
-                    # Normal random size
-                    base_width = BASE_OBSTACLE_WIDTH + int(30 * difficulty_factor)
-                    base_height = BASE_OBSTACLE_HEIGHT + int(30 * difficulty_factor)
-                    obstacle_width = random.randint(min_size, base_width)
-                    obstacle_height = random.randint(min_size, base_height)
+                    # Late game: more dangerous obstacles
+                    weights = [0.25, 0.25, 0.25, 0.25]  # Equal distribution
+                
+                # Choose obstacle type based on weights
+                obstacle_type = random.choices(obstacle_types, weights=weights)[0]
+                
+                # Determine obstacle size based on type and difficulty
+                if obstacle_type == 'spikes':
+                    # For spikes, we'll set the width based on the number of duplications we want
+                    # The actual width will be adjusted in the Obstacle class based on the sprite width
+                    num_spikes = 1 + int(4 * difficulty_factor)  # 1 to 5 spikes based on difficulty
+                    obstacle_width = num_spikes * 30  # Use actual spike width (30px) instead of approximate
+                    obstacle_height = 35  # Fixed height for spikes
+                
+                elif obstacle_type == 'fire':
+                    # For fire, we'll set the width based on the number of duplications we want
+                    # The actual width will be adjusted in the Obstacle class based on the sprite width
+                    num_fires = 1 + int(3 * difficulty_factor)  # 1 to 4 fires based on difficulty
+                    obstacle_width = num_fires * 30  # Use actual fire width (30px) instead of approximate
+                    obstacle_height = 30  # Fixed height for fire
+                
+                elif obstacle_type == 'saw':
+                    # Saw gets bigger with difficulty
+                    min_size = 50 + int(20 * difficulty_factor)  # 50 to 70
+                    max_size = 60 + int(40 * difficulty_factor)  # 60 to 100
+                    size = random.randint(min_size, max_size)
+                    obstacle_width = size
+                    obstacle_height = size  # Keep it square for better rotation
+                
+                elif obstacle_type == 'bomb':
+                    # Bombs are consistent in size
+                    obstacle_width = 75
+                    obstacle_height = 75
+                
+                # Flag to track if we successfully created an obstacle
+                obstacle_created = False
                 
                 # Place obstacle on floor or platform
                 if random.random() < 0.25 and platforms:
-                    # Find suitable platforms that are beneath the obstacle's x position
-                    suitable_platforms = [p for p in platforms if p.x <= obstacle_x and p.x + p.width >= obstacle_x + obstacle_width]
+                    # Find suitable platforms that are wide enough for the obstacle
+                    suitable_platforms = [p for p in platforms if p.width >= obstacle_width + 20]  # Add 20px buffer
                     
                     if suitable_platforms:
                         # Choose the most recently added suitable platform
                         p = suitable_platforms[-1]
-                        obstacle_y = p.y - obstacle_height
-                        new_obstacle = Obstacle(
-                            obstacle_x,
-                            obstacle_y,
-                            obstacle_width,
-                            obstacle_height
-                        )
-                    else:
-                        # No suitable platform found, place on floor instead
-                        obstacle_y = PLAY_AREA_HEIGHT - 20 - obstacle_height
-                        new_obstacle = Obstacle(
-                            obstacle_x, 
-                            obstacle_y,
-                            obstacle_width,
-                            obstacle_height
-                        )
-                else:
+                        
+                        # Ensure obstacle is fully on the platform by constraining its position
+                        # Calculate valid range for obstacle placement
+                        min_x = p.x + 10  # 10px buffer from left edge
+                        max_x = p.x + p.width - obstacle_width - 10  # 10px buffer from right edge
+                        
+                        # If valid placement range exists
+                        if min_x <= max_x:
+                            # Set the obstacle y position
+                            obstacle_y = p.y - obstacle_height
+                            
+                            # Try to find a non-overlapping position
+                            max_attempts = 10  # Limit the number of attempts to avoid infinite loops
+                            found_valid_position = False
+                            
+                            for _ in range(max_attempts):
+                                obstacle_x = random.randint(int(min_x), int(max_x))
+                                # Check if this position would overlap with any existing obstacle
+                                if not would_overlap_with_obstacle(obstacle_x, obstacle_y, obstacle_width, obstacle_height):
+                                    found_valid_position = True
+                                    break
+                            
+                            # If we found a valid position, create the obstacle
+                            if found_valid_position:
+                                new_obstacle = Obstacle(
+                                    obstacle_x,
+                                    obstacle_y,
+                                    obstacle_width,
+                                    obstacle_height,
+                                    obstacle_type,
+                                    difficulty_factor
+                                )
+                                obstacle_created = True
+                        else:
+                            # Platform too small, but we can resize spikes and fire to fit
+                            if obstacle_type in ['spikes', 'fire']:
+                                # Calculate maximum possible width with buffers
+                                max_possible_width = p.width - 20  # 10px buffer on each side
+                                
+                                if max_possible_width > 0:
+                                    # Adjust number of duplications to fit the platform
+                                    if obstacle_type == 'spikes':
+                                        # Recalculate number of spikes to fit
+                                        num_spikes = max(1, int(max_possible_width / 30))
+                                        obstacle_width = num_spikes * 30
+                                    else:  # fire
+                                        # Recalculate number of fires to fit
+                                        num_fires = max(1, int(max_possible_width / 30))
+                                        obstacle_width = num_fires * 30
+                                    
+                                    # Place the resized obstacle
+                                    obstacle_x = p.x + 10  # 10px from left edge
+                                    obstacle_y = p.y - obstacle_height
+                                    
+                                    # Check if this position would overlap with any existing obstacle
+                                    if not would_overlap_with_obstacle(obstacle_x, obstacle_y, obstacle_width, obstacle_height):
+                                        new_obstacle = Obstacle(
+                                            obstacle_x,
+                                            obstacle_y,
+                                            obstacle_width,
+                                            obstacle_height,
+                                            obstacle_type,
+                                            difficulty_factor
+                                        )
+                                        obstacle_created = True
+                                else:
+                                    # Platform too small even for a single sprite, try placing on floor instead
+                                    pass
+                            else:
+                                # For other obstacle types, try placing on floor instead
+                                pass
+                
+                # If we haven't created an obstacle yet, try placing it on the floor
+                if not obstacle_created:
                     # Place obstacle on the floor
                     obstacle_y = PLAY_AREA_HEIGHT - 20 - obstacle_height
-                    new_obstacle = Obstacle(
-                        obstacle_x, 
-                        obstacle_y,
-                        obstacle_width,
-                        obstacle_height
-                    )
+                    
+                    # Ensure obstacle is fully on the floor
+                    min_x = current_x - floor_width + 10  # 10px buffer from left edge
+                    max_x = current_x - obstacle_width - 10  # 10px buffer from right edge
+                    
+                    # Check if we have a valid range
+                    if min_x <= max_x:
+                        # Try to find a non-overlapping position
+                        max_attempts = 10  # Limit the number of attempts to avoid infinite loops
+                        found_valid_position = False
+                        
+                        for _ in range(max_attempts):
+                            obstacle_x = random.randint(int(min_x), int(max_x))
+                            # Check if this position would overlap with any existing obstacle
+                            if not would_overlap_with_obstacle(obstacle_x, obstacle_y, obstacle_width, obstacle_height):
+                                found_valid_position = True
+                                break
+                        
+                        # If we found a valid position, create the obstacle
+                        if found_valid_position:
+                            new_obstacle = Obstacle(
+                                obstacle_x, 
+                                obstacle_y,
+                                obstacle_width,
+                                obstacle_height,
+                                obstacle_type,
+                                difficulty_factor
+                            )
+                            obstacle_created = True
                 
-                obstacles.append(new_obstacle)
-                generated_obstacles.append(new_obstacle)
-                add_to_collision_grid(new_obstacle, new_obstacle.x, new_obstacle.y, new_obstacle.width, new_obstacle.height)
+                # If we successfully created an obstacle, add it to the lists and collision grid
+                if obstacle_created:
+                    obstacles.append(new_obstacle)
+                    generated_obstacles.append(new_obstacle)
+                    
+                    # Use the collision box for grid collision detection
+                    collision_rect = new_obstacle.get_collision_rect()
+                    add_to_collision_grid(
+                        new_obstacle, 
+                        collision_rect.x, 
+                        collision_rect.y, 
+                        collision_rect.width, 
+                        collision_rect.height
+                    )
             
             # Coin generation - with platform placement similar to power-ups
             coin_chance = 0.4  # Higher chance than power-ups

@@ -39,8 +39,7 @@ CAMERA_LEFT_BOUNDARY_FACTOR = 0.3   # Player position at 30% of screen width whe
 # ===== DIFFICULTY SCALING =====
 DIFFICULTY_START_DISTANCE = 1000  # Distance at which difficulty starts increasing
 DIFFICULTY_MAX_DISTANCE = 20000   # Distance at which difficulty reaches maximum
-BASE_OBSTACLE_HEIGHT = 50         # Base height of obstacles
-BASE_OBSTACLE_WIDTH = 50          # Base width of obstacles
+BASE_OBSTACLE_CHANCE = 0.5        # Base chance of obstacles at lowest difficulty
 MAX_OBSTACLE_CHANCE = 0.9         # Maximum chance of obstacles at highest difficulty
 BASE_PIT_CHANCE = 0.2             # Base chance of pits at lowest difficulty
 MAX_PIT_CHANCE = 0.5              # Maximum chance of pits at highest difficulty

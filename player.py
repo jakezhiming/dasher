@@ -142,7 +142,11 @@ class Player:
         
         # Draw hitbox for debugging if enabled
         if input_handler.show_debug:
-            pygame.draw.rect(screen, (255, 0, 0, 128), (screen_x, self.y, self.width, self.height), 1)
+            # Draw the collision rect in red
+            collision_rect = self.get_collision_rect()
+            pygame.draw.rect(screen, (255, 0, 0, 128), 
+                            (collision_rect.x - camera_x, collision_rect.y, 
+                             collision_rect.width, collision_rect.height), 1)
 
     def _get_animation_key(self):
         """Determine which animation to use based on player state."""
@@ -305,12 +309,24 @@ class Player:
         # Check for horizontal collisions with obstacles
         for obstacle in obstacles:
             if collide(self, obstacle):
-                obstacle_collision = True
-                collided_obstacle = obstacle
-                if self.vx > 0:  # Moving right
-                    self.x = obstacle.x - self.width  # Place player to the left of the obstacle
-                elif self.vx < 0:  # Moving left
-                    self.x = obstacle.x + obstacle.width  # Place player to the right of the obstacle
+                # Get the collision rectangle for the obstacle
+                obstacle_rect = obstacle.get_collision_rect()
+                player_rect = pygame.Rect(self.x, self.y, self.width, self.height)
+                
+                # Check if player collides with the collision rectangle
+                if player_rect.colliderect(obstacle_rect):
+                    # Handle special case for bomb
+                    if obstacle.type == 'bomb' and not obstacle.exploded:
+                        # Trigger bomb explosion on contact
+                        obstacle.start_explosion()
+                        # Don't count as collision yet (explosion will damage later)
+                    else:
+                        obstacle_collision = True
+                        collided_obstacle = obstacle
+                        if self.vx > 0:  # Moving right
+                            self.x = obstacle_rect.x - self.width  # Place player to the left of the obstacle
+                        elif self.vx < 0:  # Moving left
+                            self.x = obstacle_rect.x + obstacle_rect.width  # Place player to the right of the obstacle
         
         # Check for horizontal collisions with platforms (treating them as solid objects too)
         for platform in platforms:
@@ -383,16 +399,28 @@ class Player:
         # Vertical collision with obstacles
         for obstacle in obstacles:
             if collide(self, obstacle):
-                obstacle_collision = True
-                collided_obstacle = obstacle
-                if self.vy > 0:  # Moving down
-                    self.y = obstacle.y - self.height
-                    self.vy = 0
-                    self.jumping = False
-                    self.double_jumped = False
-                elif self.vy < 0:  # Moving up
-                    self.y = obstacle.y + obstacle.height
-                    self.vy = 0
+                # Get the collision rectangle for the obstacle
+                obstacle_rect = obstacle.get_collision_rect()
+                player_rect = pygame.Rect(self.x, self.y, self.width, self.height)
+                
+                # Check if player collides with the collision rectangle
+                if player_rect.colliderect(obstacle_rect):
+                    # Handle special case for bomb
+                    if obstacle.type == 'bomb' and not obstacle.exploded:
+                        # Trigger bomb explosion on contact
+                        obstacle.start_explosion()
+                        # Don't count as collision yet (explosion will damage later)
+                    else:
+                        obstacle_collision = True
+                        collided_obstacle = obstacle
+                        if self.vy > 0:  # Moving down
+                            self.y = obstacle_rect.y - self.height
+                            self.vy = 0
+                            self.jumping = False
+                            self.double_jumped = False
+                        elif self.vy < 0:  # Moving up
+                            self.y = obstacle_rect.y + obstacle_rect.height
+                            self.vy = 0
 
         # Pit fall
         if self.y > PLAY_AREA_HEIGHT:
@@ -420,30 +448,36 @@ class Player:
 
         # Handle damage from obstacle collision
         if obstacle_collision and not self.invincible:
-            self.lives -= 1
-            if self.lives > 0:
-                # Reset the last_life message flag if we have more than 1 life left
-                from ui import message_manager, set_hearts_flash
-                set_hearts_flash()  # Trigger heart flashing effect
-                if self.lives > 1:
-                    message_manager.shown_messages.discard("last_life")
+            # Check if the obstacle has special collision handling
+            take_damage = True
+            if hasattr(collided_obstacle, 'handle_collision'):
+                take_damage = collided_obstacle.handle_collision()
                 
-                # Start invincibility and hurt animation
-                self.start_invincibility(from_damage=True)
-                
-                # Push player away from obstacle slightly to prevent immediate re-collision
-                if collided_obstacle:
-                    # Determine push direction based on collision side
-                    if self.x + self.width/2 < collided_obstacle.x + collided_obstacle.width/2:
-                        # Player is to the left of obstacle center
-                        self.x = collided_obstacle.x - self.width - 5
-                    else:
-                        # Player is to the right of obstacle center
-                        self.x = collided_obstacle.x + collided_obstacle.width + 5
-            else:
-                # Start death animation
-                self.start_death_animation()
-                return False  # Return False to continue showing death animation
+            if take_damage:
+                self.lives -= 1
+                if self.lives > 0:
+                    # Reset the last_life message flag if we have more than 1 life left
+                    from ui import message_manager, set_hearts_flash
+                    set_hearts_flash()  # Trigger heart flashing effect
+                    if self.lives > 1:
+                        message_manager.shown_messages.discard("last_life")
+                    
+                    # Start invincibility and hurt animation
+                    self.start_invincibility(from_damage=True)
+                    
+                    # Push player away from obstacle slightly to prevent immediate re-collision
+                    if collided_obstacle:
+                        # Determine push direction based on collision side
+                        if self.x + self.width/2 < collided_obstacle.x + collided_obstacle.width/2:
+                            # Player is to the left of obstacle center
+                            self.x = collided_obstacle.x - self.width - 5
+                        else:
+                            # Player is to the right of obstacle center
+                            self.x = collided_obstacle.x + collided_obstacle.width + 5
+                else:
+                    # Start death animation
+                    self.start_death_animation()
+                    return False  # Return False to continue showing death animation
 
         # Collect coins
         for coin in coins[:]:
@@ -536,3 +570,13 @@ class Player:
         self.show_double_jump_dust = True
         self.double_jump_dust_frame = 0
         self.double_jump_dust_timer = pygame.time.get_ticks() 
+
+    def get_collision_rect(self):
+        """Return a slightly smaller collision rectangle for the player.
+        This makes the collision box 5 pixels smaller from the top, left, and right."""
+        return pygame.Rect(
+            self.x + 5,  # 5px in from the left
+            self.y + 5,  # 5px in from the top
+            self.width - 10,  # 5px in from both left and right (total 10px reduction)
+            self.height - 5  # 5px in from the top only
+        ) 
