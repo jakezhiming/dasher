@@ -88,6 +88,53 @@ def collide(rect1, rect2):
             rect1.y < rect2.y + rect2.height and
             rect1.y + rect1.height > rect2.y)
 
-def draw_background(screen):
-    """Draw a solid background."""
-    screen.fill(LIGHT_BLUE, (0, 0, screen.get_width(), PLAY_AREA_HEIGHT)) 
+def draw_background(screen, camera_x=0):
+    """Draw a parallax background using the Glacial Mountains assets."""
+    # Load background layers (only once)
+    global background_layers, background_widths
+    if 'background_layers' not in globals():
+        # Load the background images
+        background_layers = [
+            pygame.image.load('assets/images/background/sky_lightened.png').convert_alpha(),
+            pygame.image.load('assets/images/background/clouds_bg.png').convert_alpha(),
+            pygame.image.load('assets/images/background/glacial_mountains_lightened.png').convert_alpha(),
+            pygame.image.load('assets/images/background/clouds_mg_3.png').convert_alpha(),
+            pygame.image.load('assets/images/background/clouds_mg_2.png').convert_alpha(),
+            pygame.image.load('assets/images/background/cloud_lonely.png').convert_alpha(),
+            pygame.image.load('assets/images/background/clouds_mg_1_lightened.png').convert_alpha(),
+        ]
+        
+        # Scale the background layers to fit the screen height
+        background_widths = []
+        for i in range(len(background_layers)):
+            # Scale to match play area height while maintaining aspect ratio
+            orig_width, orig_height = background_layers[i].get_size()
+            scale_factor = PLAY_AREA_HEIGHT / orig_height
+            new_width = int(orig_width * scale_factor)
+            background_layers[i] = pygame.transform.scale(background_layers[i], (new_width, PLAY_AREA_HEIGHT))
+            background_widths.append(new_width)
+    
+    # Draw each layer with parallax effect
+    # Different layers move at different speeds
+    # Sky is fixed (0.0), mountains move slowly, clouds move faster
+    parallax_factors = [0.0, 0.05, 0.1, 0.15, 0.2, 0.225, 0.25]
+    
+    screen_width = screen.get_width()
+    
+    for i, layer in enumerate(background_layers):
+        # Calculate the parallax offset for this layer
+        # Use int() to ensure we get pixel-perfect positioning
+        layer_offset = int(-(camera_x * parallax_factors[i])) % background_widths[i]
+        
+        # Draw the layer, potentially multiple times to cover the screen
+        # First draw at the calculated offset
+        screen.blit(layer, (layer_offset, 0))
+        
+        # If the first instance doesn't cover the entire screen, draw additional instances
+        # Draw to the right if needed
+        if layer_offset + background_widths[i] < screen_width:
+            screen.blit(layer, (layer_offset + background_widths[i], 0))
+            
+        # Draw to the left if needed (for when the offset is positive)
+        if layer_offset > 0:
+            screen.blit(layer, (layer_offset - background_widths[i], 0)) 

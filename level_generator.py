@@ -170,7 +170,7 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                     # For spikes, we'll set the width based on the number of duplications we want
                     # The actual width will be adjusted in the Obstacle class based on the sprite width
                     num_spikes = 1 + int(4 * difficulty_factor)  # 1 to 5 spikes based on difficulty
-                    obstacle_width = num_spikes * 30  # Use actual spike width (30px) instead of approximate
+                    obstacle_width = num_spikes * 40  # Use actual spike width (30px) instead of approximate
                     obstacle_height = 35  # Fixed height for spikes
                 
                 elif obstacle_type == 'fire':

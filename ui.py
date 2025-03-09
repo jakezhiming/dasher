@@ -186,7 +186,7 @@ def draw_status_bar(screen, player):
     # If player has more lives than max_hearts, show a "+" indicator
     if player.lives > max_hearts:
         plus_text = render_retro_text(f"+{player.lives - max_hearts}", 14, RED)
-        screen.blit(plus_text, (10 + (max_hearts * heart_spacing), heart_y_position + 5))
+        screen.blit(plus_text, (15 + (max_hearts * heart_spacing), heart_y_position + 5))
     
     # Draw score at top right
     score_text = render_retro_text(f"Score: {player.score}", 18, BLACK)

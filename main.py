@@ -96,7 +96,7 @@ while running:
         floors, platforms, obstacles, coins, power_ups = remove_old_objects(player, floors, platforms, obstacles, coins, power_ups)
 
         # Draw background
-        draw_background(screen)
+        draw_background(screen, camera_x)
         for floor in floors:
             floor.draw(screen, camera_x)
         for platform in platforms:
@@ -126,7 +126,7 @@ while running:
             game_state = GAME_OVER
         
         # Continue drawing the game state
-        draw_background(screen)
+        draw_background(screen, camera_x)
         for floor in floors:
             floor.draw(screen, camera_x)
         for platform in platforms:
