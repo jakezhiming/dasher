@@ -313,18 +313,20 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 
                 # If we successfully created an obstacle, add it to the lists and collision grid
                 if obstacle_created:
-                    obstacles.append(new_obstacle)
-                    generated_obstacles.append(new_obstacle)
-                    
-                    # Use the collision box for grid collision detection
-                    collision_rect = new_obstacle.get_collision_rect()
-                    add_to_collision_grid(
-                        new_obstacle, 
-                        collision_rect.x, 
-                        collision_rect.y, 
-                        collision_rect.width, 
-                        collision_rect.height
-                    )
+                    # Additional check to ensure obstacle is off-screen
+                    if new_obstacle.x > visible_right_edge:
+                        obstacles.append(new_obstacle)
+                        generated_obstacles.append(new_obstacle)
+                        
+                        # Use the collision box for grid collision detection
+                        collision_rect = new_obstacle.get_collision_rect()
+                        add_to_collision_grid(
+                            new_obstacle, 
+                            collision_rect.x, 
+                            collision_rect.y, 
+                            collision_rect.width, 
+                            collision_rect.height
+                        )
             
             # Coin generation - with platform placement similar to power-ups
             coin_chance = 0.4  # Higher chance than power-ups
@@ -357,7 +359,7 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                     coin_x = current_x - floor_width + random.randint(0, floor_width - 20)
                     coin_y = PLAY_AREA_HEIGHT - FLOOR_HEIGHT - 30  # 30px above the floor, matching platform placement
                     
-                    if not would_overlap_with_obstacle(coin_x, coin_y, 20, 20):
+                    if not would_overlap_with_obstacle(coin_x, coin_y, 20, 20) and coin_x > visible_right_edge:
                         new_coin = Coin(coin_x, coin_y)
                         coins.append(new_coin)
                         add_to_collision_grid(new_coin, coin_x, coin_y, 20, 20)
@@ -397,7 +399,7 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                     powerup_x = current_x - floor_width + random.randint(0, floor_width - 20)
                     powerup_y = PLAY_AREA_HEIGHT - FLOOR_HEIGHT - 30  # 30px above the floor, matching platform placement
                     
-                    if not would_overlap_with_obstacle(powerup_x, powerup_y, 20, 20):
+                    if not would_overlap_with_obstacle(powerup_x, powerup_y, 20, 20) and powerup_x > visible_right_edge:
                         new_powerup = PowerUp(
                             powerup_x,
                             powerup_y,

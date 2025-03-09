@@ -320,9 +320,15 @@ class Player:
                 if player_rect.colliderect(obstacle_rect):
                     # Handle special case for bomb
                     if obstacle.type == 'bomb' and not obstacle.exploded:
-                        # Trigger bomb explosion on contact
-                        obstacle.start_explosion()
+                        # Skip bomb explosion if player is invincible from power-up
+                        if not (self.invincible and not self.invincible_from_damage):
+                            # Trigger bomb explosion on contact only if not invincible from power-up
+                            obstacle.start_explosion()
                         # Don't count as collision yet (explosion will damage later)
+                    # Skip collision handling if player is invincible from power-up (not from damage)
+                    elif self.invincible and not self.invincible_from_damage:
+                        # Allow player to pass through obstacles when invincible from power-up
+                        pass
                     else:
                         obstacle_collision = True
                         collided_obstacle = obstacle
@@ -410,9 +416,15 @@ class Player:
                 if player_rect.colliderect(obstacle_rect):
                     # Handle special case for bomb
                     if obstacle.type == 'bomb' and not obstacle.exploded:
-                        # Trigger bomb explosion on contact
-                        obstacle.start_explosion()
+                        # Skip bomb explosion if player is invincible from power-up
+                        if not (self.invincible and not self.invincible_from_damage):
+                            # Trigger bomb explosion on contact only if not invincible from power-up
+                            obstacle.start_explosion()
                         # Don't count as collision yet (explosion will damage later)
+                    # Skip collision handling if player is invincible from power-up (not from damage)
+                    elif self.invincible and not self.invincible_from_damage:
+                        # Allow player to pass through obstacles when invincible from power-up
+                        pass
                     else:
                         obstacle_collision = True
                         collided_obstacle = obstacle
@@ -504,6 +516,9 @@ class Player:
                     self.flying_timer = pygame.time.get_ticks()
                 elif power_up.type == 'invincibility':
                     self.start_invincibility(from_damage=False)
+                    # Display a message when invincibility power-up is collected
+                    from ui import message_manager
+                    message_manager.set_message("Super Star! You can walk through obstacles and bombs won't explode!")
                 elif power_up.type == 'life':
                     self.add_life()
                 power_ups.remove(power_up)
