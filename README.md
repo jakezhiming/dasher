@@ -28,6 +28,21 @@ The game features progressive difficulty - the further you go, the more challeng
   - Extra life
   - And more!
 - **Difficulty Scaling**: The game gets progressively harder the further you go
+- **AI-Powered Messages**: Game messages are rephrased by an AI in different personalities (pirate, robot, wizard, etc.) using OpenAI's GPT-4o-mini model
+
+## AI Message System
+
+Dasher features an AI-powered message system that adds personality to the game's status messages. Each time you start the game, a random personality is chosen (pirate, robot, medieval knight, etc.), and all game messages are rephrased in that style.
+
+### Setup
+
+To use the AI message system:
+
+1. Rename `.envexample` to `.env`
+2. Add your OpenAI API key to the `.env` file
+3. Make sure you have the required dependencies installed (see Installation section)
+
+If no API key is provided, the game will fall back to using the original messages without AI rephrasing.
 
 ## Requirements
 

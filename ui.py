@@ -1,5 +1,7 @@
 import pygame
 import math
+import asyncio
+import threading
 from constants import (
     PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH, HEIGHT,
     BLACK, DARK_GREY, GRAY, RED, WHITE,
@@ -8,8 +10,12 @@ from constants import (
     WHITE_OVERLAY, BLUE, CYAN, MAGENTA,
     SPEED_BOOST_DURATION, INVINCIBILITY_DURATION
 )
-from utils import render_retro_text
+from utils import render_retro_text, get_retro_font
 from sprite_loader import player_frames, get_frame
+from llm_message_handler import LLMMessageHandler
+
+# Create a global event for LLM message updates
+LLM_MESSAGE_UPDATE = pygame.USEREVENT + 1
 
 heart_sprite = None
 heart_sprite_size = HEART_SPRITE_SIZE
@@ -124,17 +130,71 @@ class StatusMessageManager:
         # Add a message queue
         self.message_queue = []
         
+        # Initialize LLM message handler
+        self.llm_handler = LLMMessageHandler()
+        
+        # Set up asyncio event loop in a separate thread
+        self.loop = asyncio.new_event_loop()
+        self.thread = threading.Thread(target=self._run_event_loop, daemon=True)
+        self.thread.start()
+        
         # Initialize with a welcome message
         self.set_message("Welcome to Dasher! Use arrow keys to move and SPACE to jump.")
+    
+    def _run_event_loop(self):
+        """Run the asyncio event loop in a separate thread"""
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
         
     def set_message(self, message):
         """Add a message to the queue. Doesn't immediately display it."""
-        if message and message not in self.message_queue and message != self.target_message:
-            self.message_queue.append(message)
+        # Check if the message is new and not already in the queue or being displayed
+        # Also check against the previous message to prevent immediate repetition
+        if (message and 
+            message not in self.message_queue and 
+            message != self.target_message and 
+            message != self.previous_message and
+            message != self.current_full_message):
             
-            # If we're not currently displaying a message, show this one immediately
-            if not self.target_message:
-                self._load_next_message()
+            # If LLM is not available, add the message directly to the queue
+            if not self.llm_handler.is_available():
+                self.message_queue.append(message)
+                # If we're not currently displaying a message, show this one immediately
+                if not self.target_message:
+                    self._load_next_message()
+            else:
+                # Process the message through LLM
+                asyncio.run_coroutine_threadsafe(self._process_with_llm(message), self.loop)
+    
+    async def _process_with_llm(self, original_message):
+        """Process the message through LLM"""
+        try:
+            # Get the complete response as a string instead of streaming chunks
+            full_response = await self.llm_handler.get_streaming_response(original_message)
+
+            # Add the response to the queue if it's not a duplicate
+            if (full_response and 
+                full_response not in self.message_queue and 
+                full_response != self.target_message and
+                full_response != self.previous_message and
+                full_response != self.current_full_message):
+                
+                self.message_queue.append(full_response)
+                
+                # If we're not currently displaying a message, show this one immediately
+                if not self.target_message:
+                    self._load_next_message()
+        except Exception as e:
+            print(f"Error processing LLM message: {e}")
+            # Fall back to original message
+            if (original_message not in self.message_queue and
+                original_message != self.target_message and
+                original_message != self.previous_message and
+                original_message != self.current_full_message):
+                
+                self.message_queue.append(original_message)
+                if not self.target_message:
+                    self._load_next_message()
     
     def _load_next_message(self):
         """Load the next message from the queue."""
@@ -149,8 +209,11 @@ class StatusMessageManager:
         next_message = self.message_queue.pop(0)
         self.target_message = next_message
         self.current_full_message = next_message
+        
+        # Reset display index and timing for the character-by-character animation
         self.display_index = 0
         self.last_char_time = pygame.time.get_ticks()
+        
         return True
     
     def update(self):
@@ -204,8 +267,14 @@ class StatusMessageManager:
         return message_key in self.shown_messages
         
     def mark_message_shown(self, message_key):
-        """Mark a specific message as having been shown."""
+        """Mark a message as having been shown"""
         self.shown_messages.add(message_key)
+        
+    def get_current_personality(self):
+        """Get the current LLM personality"""
+        if self.llm_handler.is_available():
+            return self.llm_handler.get_current_personality()
+        return "None (LLM not available)"
 
 # Create a global instance of the message manager
 message_manager = StatusMessageManager()
@@ -225,8 +294,16 @@ def get_status_message():
     
     # Only show default messages if it's been a while since the last one and no other messages are queued
     if message_manager.can_show_default_message():
-        message_manager.set_message(default_messages[message_manager.default_message_index])
+        # Get the current default message
+        current_default_message = default_messages[message_manager.default_message_index]
+        
+        # Increment the index first to avoid showing the same message twice in a row
         message_manager.set_default_message_shown()
+        
+        # Only set the message if it's different from the current and previous messages
+        if (current_default_message != message_manager.current_full_message and 
+            current_default_message != message_manager.previous_message):
+            message_manager.set_message(current_default_message)
     
     # Update and return the current streaming message
     return message_manager.update()
@@ -341,8 +418,67 @@ def draw_status_bar(screen, player):
     
     # Display previous message in second row (slightly smaller and faded)
     previous_message = message_manager.get_previous_message()
-    if previous_message:
+    
+    # Check if the current message has 3 or more lines
+    current_font = get_retro_font(16)
+    current_line_height = current_font.get_linesize()
+    current_message_lines = message_text.get_height() // current_line_height
+    
+    # Only show previous message if current message has fewer than 3 lines
+    if previous_message and current_message_lines < 3:
+        # Render the previous message
         prev_text = render_retro_text(previous_message, 14, DARK_GREY, max_message_width)
+        
+        # Check if previous message has 3 or more lines
+        prev_font = get_retro_font(14)
+        prev_line_height = prev_font.get_linesize()
+        prev_message_lines = prev_text.get_height() // prev_line_height
+        
+        if prev_message_lines >= 3:
+            # If previous message has 3+ lines, only show first 2 lines with "..." at the end
+            words = previous_message.split(' ')
+            lines = []
+            current_line = []
+            
+            # Recreate the line wrapping logic to find the first two lines
+            for word in words:
+                test_line = ' '.join(current_line + [word])
+                test_width = prev_font.size(test_line)[0]
+                
+                if test_width <= max_message_width:
+                    current_line.append(word)
+                else:
+                    if current_line:
+                        lines.append(' '.join(current_line))
+                        if len(lines) >= 2:  # We have our two lines
+                            break
+                    current_line = [word]
+            
+            # Add the last line if we don't have 2 yet
+            if current_line and len(lines) < 2:
+                lines.append(' '.join(current_line))
+            
+            # If we have at least one line
+            if lines:
+                # If we have two lines, add "..." to the second line
+                if len(lines) >= 2:
+                    lines[1] = lines[1][:-3] + "..."
+                
+                # Render the truncated message - render each line separately
+                if len(lines) == 1:
+                    prev_text = render_retro_text(lines[0], 14, DARK_GREY, max_message_width)
+                else:  # len(lines) == 2
+                    # Create a surface to hold both lines
+                    line1_surf = prev_font.render(lines[0], True, DARK_GREY)
+                    line2_surf = prev_font.render(lines[1], True, DARK_GREY)
+                    
+                    total_height = prev_line_height * 2
+                    prev_text = pygame.Surface((max_message_width, total_height), pygame.SRCALPHA)
+                    
+                    # Blit each line onto the surface
+                    prev_text.blit(line1_surf, (0, 0))
+                    prev_text.blit(line2_surf, (0, prev_line_height))
+        
         screen.blit(prev_text, (60, PLAY_AREA_HEIGHT + STATUS_BAR_HEIGHT - 35))
 
 def draw_active_powerups(screen, player, current_time):
@@ -476,6 +612,11 @@ def draw_debug_info(screen, player):
     # Display coin count
     coin_text = render_retro_text(f"Coins: {player.coin_score}", 12, BLACK)
     screen.blit(coin_text, (10, y_pos))
+    y_pos += line_height
+    
+    # Display current LLM personality
+    personality_text = render_retro_text(f"LLM Personality: {message_manager.get_current_personality()}", 12, BLACK)
+    screen.blit(personality_text, (10, y_pos))
     y_pos += line_height
     
     # Display difficulty percentage

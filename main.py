@@ -1,5 +1,15 @@
 import pygame
 import random
+import os
+import asyncio
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Set up asyncio event loop for Windows
+if os.name == 'nt':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # Import from our modules
 from constants import (
@@ -11,7 +21,7 @@ from constants import (
 from utils import render_retro_text, draw_background
 from player import Player
 from game_objects import Floor, Platform, Obstacle, Coin, PowerUp, load_textures
-from ui import draw_status_bar, draw_debug_info, message_manager
+from ui import draw_status_bar, draw_debug_info, message_manager, LLM_MESSAGE_UPDATE
 import input_handler
 from level_generator import generate_new_segment, remove_old_objects
 from sprite_loader import load_player_sprites
@@ -165,7 +175,10 @@ while running:
         game_over = False
         game_state = GAME_RUNNING
         player_has_moved = False
-        message_manager.set_message("Welcome back! Let's try again.")
+        
+        # Change to a new LLM personality
+        new_personality = message_manager.llm_handler.change_personality()
+        message_manager.set_message(f"Welcome back! I'm now speaking like a {new_personality}.")
 
     # Update the message manager
     message_manager.update()
