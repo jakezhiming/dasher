@@ -663,7 +663,7 @@ class Player:
                     self.invincible_flash_timer = current_time
 
         # Update score based on distance and coins
-        distance_score = int(self.x / 10)
+        distance_score = int((self.furthest_right_position - PLAYER_INITIAL_X) / 10)
         self.score = distance_score + self.coin_score
 
         # Update previous y position
