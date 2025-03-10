@@ -1,7 +1,7 @@
 import pygame
 import math
 import random
-from constants import WIDTH, HEIGHT
+from constants import WIDTH, HEIGHT, BLUE, MAGENTA, CYAN
 
 class CollectionEffect:
     """Base class for collection effects when player collects items"""
@@ -91,37 +91,6 @@ class ParticleEffect(CollectionEffect):
                 (int(p['x'] - p['size'] - camera_x), int(p['y'] - p['size']))
             )
 
-class TextPopup(CollectionEffect):
-    """Text popup effect for showing points or power-up name"""
-    def __init__(self, x, y, text, color, lifetime=1.0, size=20, rise_speed=50):
-        super().__init__(x, y, color, lifetime)
-        self.text = text
-        self.size = size
-        self.rise_speed = rise_speed
-        self.font = pygame.font.SysFont('Arial', size, bold=True)
-        
-    def update(self, dt):
-        super().update(dt)
-        # Move text upward
-        self.y -= self.rise_speed * dt
-        
-    def draw(self, screen, camera_x):
-        # Calculate alpha based on lifetime
-        alpha = 255
-        if self.age > self.lifetime * 0.7:  # Start fading after 70% of lifetime
-            fade_percent = (self.age - (self.lifetime * 0.7)) / (self.lifetime * 0.3)
-            alpha = 255 * (1 - fade_percent)
-        
-        # Render text with alpha
-        text_surface = self.font.render(self.text, True, self.color)
-        text_surface.set_alpha(max(0, min(255, alpha)))
-        
-        # Calculate position
-        text_rect = text_surface.get_rect(center=(int(self.x - camera_x), int(self.y)))
-        
-        # Draw on screen
-        screen.blit(text_surface, text_rect)
-
 class ShineEffect(CollectionEffect):
     """Radial shine effect for collecting items"""
     def __init__(self, x, y, color, lifetime=0.5, max_radius=50):
@@ -162,6 +131,97 @@ class ShineEffect(CollectionEffect):
             shine_surface, 
             (int(self.x - size // 2 - camera_x), int(self.y - size // 2))
         )
+
+class ParticleTrailEffect(CollectionEffect):
+    """Speed trail particles that follow behind the player"""
+    def __init__(self, x, y, color, lifetime=0.3, size_range=(1, 3), speed_range=(20, 60), continuous=True):
+        super().__init__(x, y, color, lifetime)
+        self.particles = []
+        self.size_range = size_range
+        self.speed_range = speed_range
+        self.continuous = continuous  # Whether to continuously emit particles
+        self.emission_timer = 0  # Timer for particle emission
+        self.emission_interval = 0.05  # Time between particle emissions
+        
+        # Create initial particles
+        self._create_particles(5)
+    
+    def _create_particles(self, count):
+        """Create a batch of particles"""
+        for _ in range(count):
+            size = random.uniform(self.size_range[0], self.size_range[1])
+            speed = random.uniform(self.speed_range[0], self.speed_range[1])
+            angle = random.uniform(0, 2 * math.pi)  # Random direction
+            
+            # Calculate velocity components
+            vx = math.cos(angle) * speed
+            vy = math.sin(angle) * speed
+            
+            # Add some upward bias to the particles
+            vy -= random.uniform(10, 30)
+            
+            # Create particle
+            self.particles.append({
+                'x': self.x,
+                'y': self.y,
+                'vx': vx,
+                'vy': vy,
+                'size': size,
+                'alpha': 255
+            })
+    
+    def update(self, dt):
+        super().update(dt)
+        
+        # If continuous, emit new particles periodically
+        if self.continuous:
+            self.emission_timer += dt
+            if self.emission_timer >= self.emission_interval:
+                self._create_particles(1)  # Create one new particle
+                self.emission_timer = 0
+        
+        # Update each particle
+        for particle in self.particles:
+            # Update position
+            particle['x'] += particle['vx'] * dt
+            particle['y'] += particle['vy'] * dt
+            
+            # Apply gravity
+            particle['vy'] += 50 * dt
+            
+            # Fade out based on lifetime
+            fade_factor = 1 - (self.age / self.lifetime)
+            particle['alpha'] = 255 * fade_factor
+    
+    def draw(self, screen, camera_x):
+        # Draw each particle
+        for particle in self.particles:
+            # Skip if fully transparent
+            if particle['alpha'] <= 0:
+                continue
+                
+            # Calculate screen position
+            screen_x = int(particle['x'] - camera_x)
+            screen_y = int(particle['y'])
+            
+            # Create surface for the particle
+            size = int(particle['size'])
+            if size < 1:
+                continue
+                
+            particle_surface = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+            
+            # Draw the particle
+            alpha = min(255, max(0, int(particle['alpha'])))
+            pygame.draw.circle(
+                particle_surface,
+                (*self.color, alpha),
+                (size, size),
+                size
+            )
+            
+            # Draw on screen
+            screen.blit(particle_surface, (screen_x - size, screen_y - size))
 
 # Collection effect manager
 class CollectionEffectManager:
@@ -222,6 +282,39 @@ class CollectionEffectManager:
         ))
         
         # Removed text popup
+    
+    def create_speed_trail(self, x, y):
+        """Create speed trail particles at the given position"""
+        self.effects.append(ParticleTrailEffect(
+            x, y,
+            BLUE,
+            lifetime=0.3,
+            size_range=(1, 3),
+            speed_range=(20, 60),
+            continuous=True  # Ensure continuous emission
+        ))
+    
+    def create_invincibility_trail(self, x, y):
+        """Create invincibility trail particles at the given position"""
+        self.effects.append(ParticleTrailEffect(
+            x, y,
+            MAGENTA,
+            lifetime=0.3,
+            size_range=(1, 3),
+            speed_range=(20, 60),
+            continuous=True  # Ensure continuous emission
+        ))
+    
+    def create_flying_trail(self, x, y):
+        """Create flying trail particles at the given position"""
+        self.effects.append(ParticleTrailEffect(
+            x, y,
+            CYAN,
+            lifetime=0.3,
+            size_range=(1, 3),
+            speed_range=(20, 60),
+            continuous=True  # Ensure continuous emission
+        ))
     
     def update(self, dt):
         """Update all active effects"""

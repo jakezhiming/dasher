@@ -1,11 +1,12 @@
 import pygame
 from constants import (
-    PLAY_AREA_HEIGHT, GRAVITY, INVINCIBILITY_DURATION, INVINCIBILITY_FROM_DAMAGE_DURATION, IMMOBILIZED_DURATION,
+    PLAY_AREA_HEIGHT, GRAVITY, FLYING_GRAVITY_REDUCTION, INVINCIBILITY_DURATION, INVINCIBILITY_FROM_DAMAGE_DURATION, IMMOBILIZED_DURATION,
     RED, DARK_RED, PURPLE, BLACK, PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_INITIAL_X, PLAYER_INITIAL_Y,
     PLAYER_ANIMATION_SPEED, HURT_ANIMATION_DURATION, DEATH_ANIMATION_DURATION, DEATH_ANIMATION_FRAME_DELAY,
-    SPEED_BOOST_ANIMATION_FACTOR, INITIAL_LIVES
+    SPEED_BOOST_ANIMATION_FACTOR, INITIAL_LIVES,
+    LIGHT_BLUE, SPEED_BOOST_DURATION
 )
-from utils import collide
+from utils import collide, get_cloud_image
 from sprite_loader import get_frame, load_player_sprites, player_frames
 import input_handler
 import math
@@ -33,6 +34,7 @@ class Player:
         self.coin_score = 0  # Separate score for coins
         self.speed_boost = False
         self.speed_boost_timer = 0
+        self.trail_positions = []  # Store previous positions for speed boost trail effect
         self.flying = False
         self.flying_timer = 0
         self.immobilized = False
@@ -72,6 +74,10 @@ class Player:
 
     def draw(self, screen, camera_x):
         screen_x = self.x - camera_x
+        
+        # Draw speed boost trail if active
+        if self.speed_boost and not self.dying:
+            self._draw_speed_trail(screen, camera_x)
         
         # Determine which animation to use based on player state
         animation_key = self._get_animation_key()
@@ -125,19 +131,73 @@ class Player:
         sprite_x = screen_x + self.sprite_offset_x
         sprite_y = self.y + self.sprite_offset_y
         
-        # If invincible and not dying, make the sprite flash
-        if self.invincible and not self.dying:
-            # Flash every 50ms
-            if current_time - self.invincible_flash_timer > 50:
-                self.invincible_flash = not self.invincible_flash
-                self.invincible_flash_timer = current_time
-            
-            # Only draw the sprite every other flash cycle
-            if not self.invincible_flash:
+        # Add motion blur effect when speed boost is active and moving
+        if self.speed_boost and abs(self.vx) > 3 and not self.dying:
+            # Create a motion blur by drawing faded copies of the sprite
+            blur_count = 2  # Number of blur images
+            for i in range(1, blur_count + 1):
+                # Calculate offset based on direction and blur index
+                blur_offset = i * 10 * (-1 if self.direction == 'right' else 1)
+                
+                # Create a copy of the frame with reduced alpha
+                blur_frame = frame.copy()
+                blur_frame.set_alpha(64 - i * 20)  # Decrease alpha for each blur copy
+                
+                # Draw the blur frame
+                screen.blit(blur_frame, (sprite_x + blur_offset, sprite_y))
+        
+        # If invincible from damage and not dying, make the sprite flash
+        if self.invincible and self.invincible_from_damage and not self.dying:
+            if self.invincible_flash:
+                # Draw the sprite with a red tint
+                tinted_frame = frame.copy()
+                tinted_frame.fill(DARK_RED, special_flags=pygame.BLEND_RGB_MULT)
+                screen.blit(tinted_frame, (sprite_x, sprite_y))
+            else:
+                # Draw the normal sprite
                 screen.blit(frame, (sprite_x, sprite_y))
         else:
-            # Draw normally if not invincible or if dying
-            screen.blit(frame, (sprite_x, sprite_y))
+            # Draw normally if not invincible from damage or if dying
+            if self.invincible and not self.invincible_from_damage and not self.dying:
+                # Make the player translucent when invincible from powerup
+                translucent_frame = frame.copy()
+                translucent_frame.set_alpha(64)  # 25% opacity
+                screen.blit(translucent_frame, (sprite_x, sprite_y))
+            else:
+                # Draw the normal sprite
+                screen.blit(frame, (sprite_x, sprite_y))
+        
+        # Draw cloud effect at player's feet when flying power-up is active
+        # Drawing after the player sprite so it appears in front
+        if self.flying and not self.dying:
+            # Get the cloud image if it hasn't been loaded yet
+            if not hasattr(self, 'cloud_image'):
+                # Try to get the cloud image from utils
+                original_cloud = get_cloud_image()
+                
+                if original_cloud is not None:
+                    # Scale it to an appropriate size for the player
+                    cloud_width = self.width * 4
+                    cloud_height = self.height * 3
+                    self.cloud_image = pygame.transform.scale(original_cloud, (cloud_width, cloud_height))
+                else:
+                    # Fallback to loading directly if the utils function returned None
+                    try:
+                        self.cloud_image = pygame.image.load('assets/images/background/cloud_lonely.png').convert_alpha()
+                        cloud_width = self.width * 4
+                        cloud_height = self.height * 3
+                        self.cloud_image = pygame.transform.scale(self.cloud_image, (cloud_width, cloud_height))
+                    except Exception as e:
+                        print(f"Error loading cloud image: {e}")
+                        exit()
+
+            # Position the cloud at the player's feet
+            cloud_x = screen_x - self.width - 60  # Center cloud horizontally
+            cloud_y = self.y + self.height - 38
+            
+            # Draw the cloud with slight bobbing motion
+            bob_offset = math.sin(pygame.time.get_ticks() * 0.005) * 2  # Gentle bobbing motion
+            screen.blit(self.cloud_image, (cloud_x, cloud_y + bob_offset))
         
         # Draw dust effects if needed and not dying
         if not self.dying:
@@ -227,15 +287,7 @@ class Player:
                 
             dust_y = self.y + self.height - 20  # At player's feet
             
-            # Draw more dust particles when speed boost is active
             screen.blit(dust_frame, (dust_x, dust_y))
-            
-            if self.speed_boost:
-                # Add extra dust particles when speed boost is active
-                if self.direction == 'right':
-                    screen.blit(dust_frame, (dust_x - 15, dust_y + 5))
-                else:
-                    screen.blit(dust_frame, (dust_x + 15, dust_y + 5))
         else:
             self.show_dust = False
         
@@ -276,6 +328,28 @@ class Player:
                     larger_y = dust_y - (larger_frame.get_height() - dust_frame.get_height()) // 2
                     screen.blit(larger_frame, (larger_x, larger_y))
 
+    def _draw_speed_trail(self, screen, camera_x):
+        """Draw a trail effect behind the player when speed boost is active."""
+        # Calculate screen_x for this method
+        screen_x = self.x - camera_x
+        
+        # Add a speed line effect when moving fast
+        if abs(self.vx) >= 5:
+            line_length = min(30, abs(self.vx) * 3)
+            line_start_x = screen_x + (0 if self.direction == 'right' else self.width)
+            line_start_y = self.y + self.height // 2
+            
+            for i in range(1):
+                y_offset = random.randint(-10, 10)
+                line_end_x = line_start_x + (-line_length if self.direction == 'right' else line_length)
+                pygame.draw.line(
+                    screen, 
+                    LIGHT_BLUE, 
+                    (line_start_x, line_start_y + y_offset), 
+                    (line_end_x, line_start_y + y_offset), 
+                    2
+                )
+
     def update(self, floors, platforms, obstacles, coins, power_ups):
         # If player is dying, just update the death animation and return
         if self.dying:
@@ -289,8 +363,13 @@ class Player:
                 self.immobilized = False
             return False  # Return False to indicate no game over
 
-        # Apply gravity
-        self.vy += GRAVITY
+        # Apply gravity with reduced effect during flying
+        if self.flying:
+            # Apply reduced gravity during flying power-up
+            self.vy += GRAVITY * FLYING_GRAVITY_REDUCTION
+        else:
+            # Apply normal gravity
+            self.vy += GRAVITY
         
         # Store previous position before movement
         self.prev_x = self.x
@@ -525,8 +604,9 @@ class Player:
 
         # Update power-up effects
         current_time = pygame.time.get_ticks()
-        if self.speed_boost and current_time - self.speed_boost_timer > 5000:
+        if self.speed_boost and current_time - self.speed_boost_timer > SPEED_BOOST_DURATION:
             self.speed_boost = False
+            self.trail_positions = []  # Clear trail positions when speed boost ends
         if self.flying and current_time - self.flying_timer > 5000:
             self.flying = False
         if self.invincible:
@@ -541,6 +621,37 @@ class Player:
 
         # Update previous y position
         self.prev_y = self.y
+        
+        # Handle input and movement
+        if not self.immobilized and not self.dying:
+            # Use the input handler to get movement input
+            input_handler.handle_input(self)
+            
+            # Create speed trail particles when speed boost is active (even when idle)
+            if self.speed_boost:
+                # Only create particles occasionally for performance
+                if random.random() < 0.2:  # 20% chance each frame
+                    # Position particles at the player's feet
+                    particle_x = self.x + (0 if self.direction == 'right' else self.width)
+                    particle_y = self.y + self.height - 5
+                    effect_manager.create_speed_trail(particle_x, particle_y)
+            
+            # Create invincibility trail particles when invincibility is active (even when idle)
+            if self.invincible and not self.invincible_from_damage:
+                # Only create particles occasionally for performance
+                if random.random() < 0.2:  # 20% chance each frame
+                    # Position particles at the player's feet
+                    particle_x = self.x + (0 if self.direction == 'right' else self.width)
+                    particle_y = self.y + self.height - 5
+                    effect_manager.create_invincibility_trail(particle_x, particle_y)
+
+            if self.flying:
+                # Only create particles occasionally for performance
+                if random.random() < 0.2:  # 20% chance each frame
+                    # Position particles at the player's feet
+                    particle_x = self.x + (0 if self.direction == 'right' else self.width)
+                    particle_y = self.y + self.height - 5
+                    effect_manager.create_flying_trail(particle_x, particle_y)
         
         return False  # Return False to indicate no game over
 
@@ -561,16 +672,21 @@ class Player:
         self.death_animation_frame = 0
         self.death_animation_timer = pygame.time.get_ticks()
         self.death_animation_complete = False
+        self.vx = 0
+        self.vy = 0
+        self.jumping = False
+        self.double_jumped = False
+        self.speed_boost = False
+        self.trail_positions = []  # Clear trail positions
+        self.flying = False
+        self.invincible = False
         
         # Stop all movement
         self.vx = 0
         self.vy = 0
         
         # Disable other states
-        self.invincible = False
         self.jumping = False
-        self.double_jumped = False
-        self.flying = False
         self.speed_boost = False
         self.immobilized = False
         
@@ -582,11 +698,20 @@ class Player:
         """Add a life to the player and reset the last_life message flag."""
         self.lives += 1
         # Reset the last_life message flag so it can be shown again if needed
-        from ui import message_manager
+        from ui import message_manager, set_heart_pop_in, set_plus_indicator_animation
         message_manager.shown_messages.discard("last_life")
         # Display a message when a life is added
         message_manager.set_message("Yippee! Extra life collected!") 
         
+        # Determine which animation to trigger based on the number of lives
+        max_displayed_hearts = 5
+        if self.lives <= max_displayed_hearts:
+            # If we're showing individual hearts, animate the newly added heart
+            set_heart_pop_in(self.lives - 1)
+        else:
+            # If we're showing the "+X" indicator, animate that instead
+            set_plus_indicator_animation()
+
     def perform_double_jump(self):
         """Perform a double jump and show the dust effect."""
         self.double_jumped = True
@@ -603,3 +728,28 @@ class Player:
             self.width - 10,  # 5px in from both left and right (total 10px reduction)
             self.height - 5  # 5px in from the top only
         ) 
+
+    def _handle_movement(self):
+        """Handle player movement based on input."""
+        # Use the input handler to get movement input
+        input_handler.handle_input(self)
+        
+        # Limit falling speed
+        if self.vy > 15:
+            self.vy = 15 
+
+    def reset(self):
+        """Reset the player after death."""
+        self.x = self.respawn_x
+        self.y = self.respawn_y
+        self.vx = 0
+        self.vy = 0
+        self.jumping = False
+        self.double_jumped = False
+        self.dying = False
+        self.death_animation_frame = 0
+        self.death_animation_complete = False
+        self.speed_boost = False
+        self.trail_positions = []  # Clear trail positions
+        self.flying = False
+        self.invincible = False 

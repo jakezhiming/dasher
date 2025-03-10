@@ -4,6 +4,19 @@ from constants import FONT_PATH, LIGHT_BLUE, PLAY_AREA_HEIGHT
 # Font cache to store loaded fonts by size
 _font_cache = {}
 
+# Cloud image cache
+_cloud_image = None
+
+def get_cloud_image():
+    """Get the cloud image, loading it if necessary."""
+    global _cloud_image
+    if _cloud_image is None:
+        try:
+            _cloud_image = pygame.image.load('assets/images/background/cloud_lonely.png').convert_alpha()
+        except Exception as e:
+            print(f"Warning: Could not load cloud_lonely.png: {e}")
+    return _cloud_image
+
 def get_retro_font(size):
     """Load the retro font with the specified size, using cache for efficiency."""
     # Check if the font size is already in the cache

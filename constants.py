@@ -17,9 +17,11 @@ PLAYER_INITIAL_Y = PLAY_AREA_HEIGHT - PLAYER_HEIGHT - 20
 
 # Player physics
 GRAVITY = 0.45
+FLYING_GRAVITY_REDUCTION = 0.66  # Flying reduces gravity by 33%
 JUMP_VELOCITY = -10
 BASE_MOVE_SPEED = 6
 SPEED_BOOST_MULTIPLIER = 1.25
+SPEED_BOOST_DURATION = 5000  # ms - how long the speed boost lasts
 
 # Player states
 INITIAL_LIVES = 3
@@ -87,7 +89,7 @@ CYAN = (0, 191, 255)       # Deep sky blue for flying power-up
 MAGENTA = (218, 112, 214)  # Orchid for other power-ups
 GRAY = (128, 128, 128)     # Medium gray
 PURPLE = (147, 112, 219)   # Medium purple for invincibility flashing
-LIGHT_BLUE = (135, 206, 255) # Light blue for background
+LIGHT_BLUE = (135, 206, 255) # Light blue
 BROWN = (139, 69, 19)      # Brown for floor and platforms
 WHITE_OVERLAY = (255, 255, 255, 128)  # Semi-transparent white for flashing effects
 

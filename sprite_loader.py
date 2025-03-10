@@ -102,16 +102,16 @@ def load_player_sprites():
     extract_frames('death', 8, 'death_right', 'death_left')
     
     # Flying animation (use jump frames with color overlay)
-    player_frames['flying_right'] = apply_color_overlay(player_frames['jump_right'], (0, 191, 255, 100))
-    player_frames['flying_left'] = apply_color_overlay(player_frames['jump_left'], (0, 191, 255, 100))
+    player_frames['flying_right'] = player_frames['jump_right'].copy()  # No overlay for flying
+    player_frames['flying_left'] = player_frames['jump_left'].copy()  # No overlay for flying
     
-    # Invincible animation (use run frames with color overlay)
-    player_frames['invincible_right'] = apply_color_overlay(player_frames['run_right'], (218, 112, 214, 100))
-    player_frames['invincible_left'] = apply_color_overlay(player_frames['run_left'], (218, 112, 214, 100))
+    # Invincible animation (use regular run frames without color overlay)
+    player_frames['invincible_right'] = player_frames['run_right'].copy()  # No overlay, we'll apply translucency in the draw method
+    player_frames['invincible_left'] = player_frames['run_left'].copy()  # No overlay, we'll apply translucency in the draw method
     
-    # Speed boost animation (use run frames with blue color overlay)
-    player_frames['speed_boost_right'] = apply_color_overlay(player_frames['run_right'], (0, 191, 255, 100))
-    player_frames['speed_boost_left'] = apply_color_overlay(player_frames['run_left'], (0, 191, 255, 100))
+    # Speed boost animation (use regular run frames without color overlay)
+    player_frames['speed_boost_right'] = player_frames['run_right'].copy()
+    player_frames['speed_boost_left'] = player_frames['run_left'].copy()
     
     # Extract dust effect frames
     extract_dust_frames('dust_walk', 6)
