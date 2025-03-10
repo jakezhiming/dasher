@@ -210,10 +210,9 @@ class StatusMessageManager:
 # Create a global instance of the message manager
 message_manager = StatusMessageManager()
 
-def get_status_message(player):
+def get_status_message():
     """
     Generate a status message based on the current game state.
-    This function will be easy to replace with an LLM-based solution in the future.
     """
     # Default messages that cycle based on time
     default_messages = [
@@ -313,7 +312,7 @@ def draw_status_bar(screen, player):
     pygame.draw.rect(screen, GRAY, (0, PLAY_AREA_HEIGHT, WIDTH, STATUS_BAR_HEIGHT))
     
     # Get and display the streaming status message
-    message = get_status_message(player)
+    message = get_status_message()
     
     # Calculate max width for messages (leave some margin on both sides)
     max_message_width = WIDTH - 80  # Reduced to make room for player sprite
