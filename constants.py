@@ -67,7 +67,6 @@ DEFAULT_OBSTACLE_SIZE = 30
 HEART_SPRITE_SIZE = 32
 MESSAGE_CHAR_DELAY = 5            # ms between characters in scrolling text
 DEFAULT_MESSAGE_DELAY = 5000      # ms between default messages
-WELCOME_MESSAGE = "Welcome to Dasher! Use arrow keys to move and SPACE to jump."
 
 # ===== ANIMATION CONSTANTS =====
 PLAYER_ANIMATION_SPEED = 0.2      # Frames per second

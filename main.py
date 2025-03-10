@@ -5,7 +5,7 @@ import random
 from constants import (
     WIDTH, HEIGHT, PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT,
     GAME_RUNNING, GAME_LOST_MESSAGE, GAME_OVER, GAME_OVER_DISPLAY_DURATION,
-    BLUE, BLACK, RED, SEGMENT_LENGTH_MULTIPLIER, WELCOME_MESSAGE,
+    BLUE, BLACK, RED, SEGMENT_LENGTH_MULTIPLIER,
     PLAYER_INITIAL_X, PLAYER_INITIAL_Y
 )
 from utils import render_retro_text, draw_background
@@ -43,9 +43,6 @@ game_over = False
 game_state = GAME_RUNNING
 game_over_timer = 0
 player_has_moved = False
-
-# Set initial messages
-message_manager.set_message(WELCOME_MESSAGE)
 
 # Main loop
 running = True

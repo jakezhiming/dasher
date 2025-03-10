@@ -1,4 +1,5 @@
 import pygame
+import random
 from constants import (
     PLAY_AREA_HEIGHT, GRAVITY, FLYING_GRAVITY_REDUCTION, INVINCIBILITY_DURATION, INVINCIBILITY_FROM_DAMAGE_DURATION, IMMOBILIZED_DURATION,
     RED, DARK_RED, PURPLE, BLACK, PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_INITIAL_X, PLAYER_INITIAL_Y,
@@ -10,7 +11,6 @@ from utils import collide, get_cloud_image
 from sprite_loader import get_frame, load_player_sprites, player_frames
 import input_handler
 import math
-import random
 from collection_effects import effect_manager
 
 class Player:
@@ -525,6 +525,20 @@ class Player:
                 set_hearts_flash()  # Trigger heart flashing effect
                 if self.lives > 1:
                     message_manager.shown_messages.discard("last_life")
+                # Check if this is the last life
+                elif self.lives == 1 and not message_manager.has_shown_message("last_life"):
+                    message_manager.set_message("You're on your last life! Be careful!")
+                    message_manager.mark_message_shown("last_life")
+                
+                # Set pit fall message
+                pit_fall_messages = [
+                    "Watch your step! That was a nasty fall!",
+                    "Oops! Mind the gap next time!",
+                    "Gravity: 1, Player: 0. Try jumping over pits!",
+                    "Falling isn't flying! Jump earlier next time."
+                ]
+                message_manager.set_message(random.choice(pit_fall_messages))
+                
                 self.x = self.respawn_x
                 self.y = self.respawn_y
                 self.vx = 0
@@ -555,6 +569,27 @@ class Player:
                     set_hearts_flash()  # Trigger heart flashing effect
                     if self.lives > 1:
                         message_manager.shown_messages.discard("last_life")
+                    # Check if this is the last life
+                    elif self.lives == 1 and not message_manager.has_shown_message("last_life"):
+                        message_manager.set_message("You're on your last life! Be careful!")
+                        message_manager.mark_message_shown("last_life")
+                    
+                    # Set obstacle collision message based on obstacle type
+                    if collided_obstacle:
+                        if collided_obstacle.type == 'spikes':
+                            message_manager.set_message("Those spikes are sharp! Be careful!")
+                        elif collided_obstacle.type == 'fire':
+                            message_manager.set_message("Hot hot hot! Avoid the flames!")
+                        elif collided_obstacle.type == 'bomb' and collided_obstacle.exploded:
+                            message_manager.set_message("BOOM! That explosion packed a punch!")
+                        else:
+                            obstacle_messages = [
+                                "Ouch! That hurt!",
+                                "Watch out for obstacles in your path!",
+                                "Try jumping over obstacles next time!",
+                                "That's going to leave a mark!"
+                            ]
+                            message_manager.set_message(random.choice(obstacle_messages))
                     
                     # Start invincibility and hurt animation
                     self.start_invincibility(from_damage=True)
@@ -587,19 +622,23 @@ class Player:
                 # Create collection effect at the power-up's position
                 effect_manager.create_powerup_effect(power_up.x, power_up.y, power_up.type)
                 
+                # Import message_manager here to avoid circular imports
+                from ui import message_manager
+                
                 if power_up.type == 'speed':
                     self.speed_boost = True
                     self.speed_boost_timer = pygame.time.get_ticks()
+                    message_manager.set_message("Super speed activated! Zoom zoom!")
                 elif power_up.type == 'flying':
                     self.flying = True
                     self.flying_timer = pygame.time.get_ticks()
+                    message_manager.set_message("You can fly now! Keep jumping to soar through the sky!")
                 elif power_up.type == 'invincibility':
                     self.start_invincibility(from_damage=False)
-                    # Display a message when invincibility power-up is collected
-                    from ui import message_manager
-                    message_manager.set_message("Super Star! You can walk through obstacles and bombs won't explode!")
+                    message_manager.set_message("You're invincible! Nothing can hurt you now!")
                 elif power_up.type == 'life':
                     self.add_life()
+                    message_manager.set_message("Extra life obtained! Keep going!")
                 power_ups.remove(power_up)
 
         # Update power-up effects
@@ -677,19 +716,11 @@ class Player:
             self.animation_frame = 0
 
     def start_death_animation(self):
-        """Start the death animation sequence."""
+        """Start the death animation sequence"""
         self.dying = True
         self.death_animation_frame = 0
         self.death_animation_timer = pygame.time.get_ticks()
         self.death_animation_complete = False
-        self.vx = 0
-        self.vy = 0
-        self.jumping = False
-        self.double_jumped = False
-        self.speed_boost = False
-        self.trail_positions = []  # Clear trail positions
-        self.flying = False
-        self.invincible = False
         
         # Stop all movement
         self.vx = 0
@@ -697,12 +728,22 @@ class Player:
         
         # Disable other states
         self.jumping = False
+        self.double_jumped = False
         self.speed_boost = False
+        self.flying = False
+        self.invincible = False
         self.immobilized = False
+        self.trail_positions = []  # Clear trail positions
         
-        # Display a death message
+        # Set death message
         from ui import message_manager
-        message_manager.set_message("Oh no! You died!")
+        death_messages = [
+            "Game Over! Better luck next time!",
+            "You ran out of lives! Try again?",
+            "The adventure ends here... for now!",
+            "Ouch! That was your last life!"
+        ]
+        message_manager.set_message(random.choice(death_messages))
 
     def add_life(self):
         """Add a life to the player and reset the last_life message flag."""
@@ -710,8 +751,6 @@ class Player:
         # Reset the last_life message flag so it can be shown again if needed
         from ui import message_manager, set_heart_pop_in, set_plus_indicator_animation
         message_manager.shown_messages.discard("last_life")
-        # Display a message when a life is added
-        message_manager.set_message("Yippee! Extra life collected!") 
         
         # Determine which animation to trigger based on the number of lives
         max_displayed_hearts = 5

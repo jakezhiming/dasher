@@ -110,7 +110,7 @@ class StatusMessageManager:
         self.display_index = 0
         self.last_char_time = 0
         self.char_delay = MESSAGE_CHAR_DELAY  # Milliseconds between characters
-        self.last_default_time = 0
+        self.last_message_time = 0  # Track when the last message was fully displayed
         self.default_message_delay = DEFAULT_MESSAGE_DELAY  # 5 seconds between default messages
         self.default_message_index = 0
         
@@ -121,20 +121,37 @@ class StatusMessageManager:
         # Track messages that should only be shown once
         self.shown_messages = set()
         
+        # Add a message queue
+        self.message_queue = []
+        
         # Initialize with a welcome message
         self.set_message("Welcome to Dasher! Use arrow keys to move and SPACE to jump.")
         
     def set_message(self, message):
-        """Set a new message. Newer messages always take precedence."""
-        if message != self.target_message:
-            # Save the current message as previous before setting the new one
-            if self.current_full_message:
-                self.previous_message = self.current_full_message
+        """Add a message to the queue. Doesn't immediately display it."""
+        if message and message not in self.message_queue and message != self.target_message:
+            self.message_queue.append(message)
             
-            self.target_message = message
-            self.current_full_message = message
-            self.display_index = 0
-            self.last_char_time = pygame.time.get_ticks()
+            # If we're not currently displaying a message, show this one immediately
+            if not self.target_message:
+                self._load_next_message()
+    
+    def _load_next_message(self):
+        """Load the next message from the queue."""
+        if not self.message_queue:
+            return False
+            
+        # Save the current message as previous before setting the new one
+        if self.current_full_message:
+            self.previous_message = self.current_full_message
+        
+        # Get the next message from the queue
+        next_message = self.message_queue.pop(0)
+        self.target_message = next_message
+        self.current_full_message = next_message
+        self.display_index = 0
+        self.last_char_time = pygame.time.get_ticks()
+        return True
     
     def update(self):
         """Update the streaming text effect."""
@@ -146,19 +163,36 @@ class StatusMessageManager:
                 self.display_index += 1
                 self.current_message = self.target_message[:self.display_index]
                 self.last_char_time = current_time
+                
+                # If we just finished displaying the message, record the time
+                if self.display_index == len(self.target_message):
+                    self.last_message_time = current_time
         else:
             # Message is fully displayed
             self.current_message = self.target_message
+            
+            # If there are messages in the queue, show the next one
+            if self.message_queue:
+                self._load_next_message()
             
         return self.current_message
     
     def can_show_default_message(self):
         """Check if enough time has passed to show a new default message."""
-        return pygame.time.get_ticks() - self.last_default_time > self.default_message_delay
+        current_time = pygame.time.get_ticks()
+        
+        # Only show default messages if:
+        # 1. Enough time has passed since the last message was shown
+        # 2. There are no messages in the queue
+        # 3. Either we have no current message OR we have a fully displayed message
+        return (current_time - self.last_message_time > self.default_message_delay and
+                not self.message_queue and
+                (not self.target_message or (self.target_message and self.display_index == len(self.target_message))))
     
     def set_default_message_shown(self):
-        """Mark that a default message has been shown."""
-        self.last_default_time = pygame.time.get_ticks()
+        """Mark that a default message has been shown and cycle to the next one."""
+        self.last_message_time = pygame.time.get_ticks()
+        # Increment the default message index to cycle through the messages
         self.default_message_index = (self.default_message_index + 1) % 5  # Cycle through 5 default messages
     
     def get_previous_message(self):
@@ -190,18 +224,8 @@ def get_status_message(player):
         "Press SPACE to jump. Double-tap to double jump!"
     ]
     
-    # Priority order for messages (most important first)
-    if player.lives == 1 and not message_manager.has_shown_message("last_life"):
-        message_manager.set_message("You're on your last life! Be careful!")
-        message_manager.mark_message_shown("last_life")
-    elif player.invincible and not player.invincible_from_damage:
-        message_manager.set_message("You're invincible! Nothing can hurt you now!")
-    elif player.flying:
-        message_manager.set_message("You can fly now! Press SPACE to soar through the sky!")
-    elif player.speed_boost:
-        message_manager.set_message("Super speed activated! Zoom zoom!")
-    # Only show default messages if it's been a while since the last one
-    elif message_manager.can_show_default_message():
+    # Only show default messages if it's been a while since the last one and no other messages are queued
+    if message_manager.can_show_default_message():
         message_manager.set_message(default_messages[message_manager.default_message_index])
         message_manager.set_default_message_shown()
     
