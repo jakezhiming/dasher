@@ -1,24 +1,26 @@
 import pygame
 import random
-from constants import (
-    PLAY_AREA_HEIGHT, GRAVITY, FLYING_GRAVITY_REDUCTION, INVINCIBILITY_DURATION, INVINCIBILITY_FROM_DAMAGE_DURATION, IMMOBILIZED_DURATION,
-    RED, DARK_RED, PURPLE, BLACK, PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_INITIAL_X, PLAYER_INITIAL_Y,
-    PLAYER_ANIMATION_SPEED, HURT_ANIMATION_DURATION, DEATH_ANIMATION_DURATION, DEATH_ANIMATION_FRAME_DELAY,
-    SPEED_BOOST_ANIMATION_FACTOR, INITIAL_LIVES,
-    LIGHT_BLUE, SPEED_BOOST_DURATION
+from constants.player import (
+    PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_INITIAL_X, PLAYER_INITIAL_Y,
+    GRAVITY, FLYING_GRAVITY_REDUCTION, INVINCIBILITY_DURATION, INVINCIBILITY_FROM_DAMAGE_DURATION, 
+    IMMOBILIZED_DURATION, INITIAL_LIVES, HURT_ANIMATION_DURATION, DEATH_ANIMATION_DURATION,
+    SPEED_BOOST_DURATION, MAX_BACKTRACK_DISTANCE
 )
-from utils import collide, get_cloud_image
-from sprite_loader import get_frame, load_player_sprites, player_frames
+from constants.screen import PLAY_AREA_HEIGHT
+from constants.colors import DARK_RED, LIGHT_BLUE
+from constants.animation import PLAYER_ANIMATION_SPEED, DEATH_ANIMATION_FRAME_DELAY, SPEED_BOOST_ANIMATION_FACTOR
+from utils import collide
+from assets_loader import get_frame, player_frames, get_cloud_image
 import input_handler
 import math
-from collection_effects import effect_manager
+from effects import effect_manager
 
 class Player:
-    def __init__(self):
+    def __init__(self, x=PLAYER_INITIAL_X, y=PLAYER_INITIAL_Y):
         self.width = PLAYER_WIDTH
         self.height = PLAYER_HEIGHT
-        self.x = PLAYER_INITIAL_X
-        self.y = PLAYER_INITIAL_Y
+        self.x = x
+        self.y = y
         self.vx = 0
         self.vy = 0
         self.jumping = False
@@ -431,7 +433,6 @@ class Player:
             self.furthest_right_position = self.x
 
         # Calculate dynamic left boundary based on furthest right position
-        from constants import MAX_BACKTRACK_DISTANCE
         dynamic_left_boundary = max(0, self.furthest_right_position - MAX_BACKTRACK_DISTANCE)
         
         # Prevent moving left past the dynamic left boundary

@@ -1,24 +1,21 @@
 import pygame
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
-# Import from our modules
-from constants import (
-    WIDTH, HEIGHT, PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT,
-    GAME_RUNNING, GAME_LOST_MESSAGE, GAME_OVER, GAME_OVER_DISPLAY_DURATION,
-    BLUE, BLACK, RED, SEGMENT_LENGTH_MULTIPLIER,
-    PLAYER_INITIAL_X, PLAYER_INITIAL_Y
+from assets_loader import load_all_assets
+from constants.colors import BLUE, RED
+from constants.screen import WIDTH, HEIGHT, PLAY_AREA_HEIGHT
+from constants.game_states import (
+    GAME_RUNNING, GAME_LOST_MESSAGE, GAME_OVER, GAME_OVER_DISPLAY_DURATION
 )
 from utils import render_retro_text, draw_background
 from player import Player
-from game_objects import Floor, Platform, Obstacle, Coin, PowerUp, load_textures
+from game_objects import Floor
 from ui import draw_ui, draw_debug_info, message_manager
 import input_handler
 from level_generator import generate_new_segment, remove_old_objects
-from sprite_loader import load_player_sprites
-from collection_effects import effect_manager
+from effects import effect_manager
 
 # Initialize Pygame
 pygame.init()
@@ -29,8 +26,7 @@ pygame.display.set_caption("Dasher")
 clock = pygame.time.Clock()
 
 # Load game assets
-load_textures()  # Load game object textures
-load_player_sprites()  # Load player sprites
+load_all_assets()  # Load all game assets using the asset_loader
 
 # Initialize game
 player = Player()
@@ -88,7 +84,7 @@ while running:
         effect_manager.update(dt)
         
         if camera_x + WIDTH > rightmost_floor_end - 600:
-            rightmost_floor_end = generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, rightmost_floor_end, camera_x, WIDTH)
+            rightmost_floor_end = generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, camera_x, WIDTH)
         
         floors, platforms, obstacles, coins, power_ups = remove_old_objects(player, floors, platforms, obstacles, coins, power_ups)
 

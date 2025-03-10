@@ -1,7 +1,7 @@
 import pygame
 import math
 import random
-from constants import WIDTH, HEIGHT, BLUE, MAGENTA, CYAN
+from constants.colors import BLUE, MAGENTA, CYAN, GOLD, RED
 
 class CollectionEffect:
     """Base class for collection effects when player collects items"""
@@ -229,12 +229,12 @@ class CollectionEffectManager:
         self.effects = []
         
         # Define colors for different effects
-        self.coin_color = (255, 215, 0)  # Gold
+        self.coin_color = GOLD
         self.powerup_colors = {
-            'speed': (30, 144, 255),      # Blue
-            'flying': (0, 200, 255),      # Cyan
-            'invincibility': (255, 50, 255),  # Magenta
-            'life': (255, 60, 60)         # Red
+            'speed': BLUE,      
+            'flying': CYAN,     
+            'invincibility': MAGENTA,  
+            'life': RED 
         }
     
     def create_coin_effect(self, x, y):

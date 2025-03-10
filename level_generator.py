@@ -1,16 +1,22 @@
 import random
 import pygame
-from constants import (
-    PLAY_AREA_HEIGHT, DIFFICULTY_START_DISTANCE, DIFFICULTY_MAX_DISTANCE,
-    BASE_OBSTACLE_CHANCE, MAX_OBSTACLE_CHANCE, MAX_PIT_CHANCE,
-    MIN_PIT_WIDTH, MAX_PIT_WIDTH, BASE_PIT_CHANCE, BASE_POWERUP_CHANCE,
-    SEGMENT_LENGTH_MULTIPLIER, GRID_CELL_SIZE, OBSTACLE_BUFFER,
-    MIN_PLATFORM_WIDTH, MAX_PLATFORM_WIDTH, PLATFORM_EDGE_BUFFER,
-    FLOOR_HEIGHT
+from constants.screen import PLAY_AREA_HEIGHT
+from constants.difficulty import (
+    DIFFICULTY_START_DISTANCE, DIFFICULTY_MAX_DISTANCE,
+    BASE_OBSTACLE_CHANCE, MAX_OBSTACLE_CHANCE, 
+    BASE_PIT_CHANCE, MAX_PIT_CHANCE,
+    MIN_PIT_WIDTH, MAX_PIT_WIDTH, BASE_POWERUP_CHANCE,
+    MAX_SPIKES, MAX_FIRES, MAX_SAW_SIZE
 )
+from constants.level_generation import (
+    SEGMENT_LENGTH_MULTIPLIER, GRID_CELL_SIZE, OBSTACLE_BUFFER,
+    MIN_PLATFORM_WIDTH, MAX_PLATFORM_WIDTH, PLATFORM_EDGE_BUFFER
+)
+from constants.game_objects import FLOOR_HEIGHT
+from constants.player import MAX_BACKTRACK_DISTANCE
 from game_objects import Floor, Platform, Obstacle, Coin, PowerUp
 
-def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, rightmost_floor_end, camera_x, width):
+def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, camera_x, width):
     """Generate a new segment of the level with floors, platforms, obstacles, and collectibles."""
     last_floor = floors[-1]
     new_x = last_floor.x + last_floor.width
@@ -170,21 +176,21 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 if obstacle_type == 'spikes':
                     # For spikes, we'll set the width based on the number of duplications we want
                     # The actual width will be adjusted in the Obstacle class based on the sprite width
-                    num_spikes = 1 + int(4 * difficulty_factor)  # 1 to 5 spikes based on difficulty
+                    num_spikes = 1 + int((MAX_SPIKES-1) * difficulty_factor)
                     obstacle_width = num_spikes * 40  # Use actual spike width (30px) instead of approximate
                     obstacle_height = 35  # Fixed height for spikes
                 
                 elif obstacle_type == 'fire':
                     # For fire, we'll set the width based on the number of duplications we want
                     # The actual width will be adjusted in the Obstacle class based on the sprite width
-                    num_fires = 1 + int(3 * difficulty_factor)  # 1 to 4 fires based on difficulty
+                    num_fires = 1 + int((MAX_FIRES-1) * difficulty_factor)
                     obstacle_width = num_fires * 30  # Use actual fire width (30px) instead of approximate
                     obstacle_height = 30  # Fixed height for fire
                 
                 elif obstacle_type == 'saw':
                     # Saw gets bigger with difficulty
                     min_size = 50 + int(20 * difficulty_factor)  # 50 to 70
-                    max_size = 60 + int(40 * difficulty_factor)  # 60 to 100
+                    max_size = 60 + int((MAX_SAW_SIZE-60) * difficulty_factor)  # 60 to 100
                     size = random.randint(min_size, max_size)
                     obstacle_width = size
                     obstacle_height = size  # Keep it square for better rotation
@@ -412,8 +418,6 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
 
 def remove_old_objects(player, floors, platforms, obstacles, coins, power_ups):
     """Remove objects that are far behind the player."""
-    from constants import MAX_BACKTRACK_DISTANCE
-    
     # Calculate dynamic left boundary based on furthest right position
     dynamic_left_boundary = max(0, player.furthest_right_position - MAX_BACKTRACK_DISTANCE - 100)
     

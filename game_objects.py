@@ -1,13 +1,12 @@
 import pygame
-from constants import (
-    BROWN, GREEN, YELLOW, BLUE, CYAN, MAGENTA, RED,
-    PLAY_AREA_HEIGHT, WIDTH, FLOOR_HEIGHT, COIN_SIZE,
-    POWERUP_SIZE, DEFAULT_OBSTACLE_SIZE
-)
+from constants.colors import GREEN, RED
+from constants.screen import PLAY_AREA_HEIGHT, WIDTH
+from constants.game_objects import COIN_SIZE, POWERUP_SIZE, DEFAULT_OBSTACLE_SIZE
+from constants.game_objects import FLOOR_HEIGHT
 import math
 import random
-import os
-import input_handler  # Import input_handler for debug toggle
+import input_handler
+import assets_loader 
 
 # Global texture variables
 ground_texture = None
@@ -20,147 +19,6 @@ saw_animation_frames = []  # List to store saw animation frames
 bomb_animation_frames = []  # List to store bomb animation frames
 explosion_animation_frames = []  # List to store explosion animation frames
 
-def load_textures():
-    """Load textures for game objects."""
-    global ground_texture, platform_texture, coin_sprite, powerup_sprites, obstacle_sprites
-    global fire_animation_frames, saw_animation_frames, bomb_animation_frames, explosion_animation_frames
-    
-    try:
-        # Load ground texture
-        ground_path = "assets/images/textures/ground_texture.png"
-        ground_texture = pygame.image.load(ground_path).convert()
-        
-        # Load platform texture
-        platform_path = "assets/images/textures/platform_texture.png"
-        platform_texture = pygame.image.load(platform_path).convert()
-        
-        # Load coin sprite
-        try:
-            coin_path = "assets/images/powerups/coin.png"
-            coin_sprite = pygame.image.load(coin_path).convert_alpha()
-            # Resize to match the game's dimensions if needed
-            if coin_sprite.get_width() != COIN_SIZE or coin_sprite.get_height() != COIN_SIZE:
-                coin_sprite = pygame.transform.scale(coin_sprite, (COIN_SIZE, COIN_SIZE))
-            print("Successfully loaded coin sprite")
-        except Exception as e:
-            print(f"Error loading coin sprite: {e}")
-            coin_sprite = None
-            
-        # Load power-up sprites
-        try:
-            powerup_types = ['speed', 'flying', 'invincibility', 'life']
-            for p_type in powerup_types:
-                path = f"assets/images/powerups/powerup_{p_type}.png"
-                powerup_sprites[p_type] = pygame.image.load(path).convert_alpha()
-                # Resize to match the game's dimensions if needed
-                if powerup_sprites[p_type].get_width() != POWERUP_SIZE or powerup_sprites[p_type].get_height() != POWERUP_SIZE:
-                    powerup_sprites[p_type] = pygame.transform.scale(powerup_sprites[p_type], (POWERUP_SIZE, POWERUP_SIZE))
-            print("Successfully loaded power-up sprites")
-        except Exception as e:
-            print(f"Error loading power-up sprites: {e}")
-            exit()
-            
-        # Load obstacle sprites
-        try:
-            # Load spikes
-            try:
-                spikes_path = "assets/images/obstacles/spikes.png"
-                obstacle_sprites['spikes'] = pygame.image.load(spikes_path).convert_alpha()
-                print("Successfully loaded spikes sprite")
-            except Exception as e:
-                print(f"Error loading spikes sprite: {e}")
-                fallback = pygame.Surface((30, 20))
-                fallback.fill(RED)
-                obstacle_sprites['spikes'] = fallback
-            
-            # Load fire animation frames (sprite sheet with 3 frames)
-            try:
-                fire_path = "assets/images/obstacles/fire.png"
-                fire_sprite_sheet = pygame.image.load(fire_path).convert_alpha()
-                
-                # Get the dimensions of the sprite sheet
-                sheet_width = fire_sprite_sheet.get_width()
-                sheet_height = fire_sprite_sheet.get_height()
-                
-                # Assuming the fire sprite sheet has 3 frames horizontally
-                frame_width = sheet_width // 3
-                
-                # Extract each frame from the sprite sheet
-                for i in range(3):
-                    # Create a subsurface for each frame
-                    frame_rect = pygame.Rect(i * frame_width, 0, frame_width, sheet_height)
-                    frame = fire_sprite_sheet.subsurface(frame_rect)
-                    fire_animation_frames.append(frame)
-                
-                # Store the first frame as the base sprite
-                obstacle_sprites['fire'] = fire_animation_frames[0]
-                print("Successfully loaded fire sprite sheet with 3 frames")
-            except Exception as e:
-                print(f"Error loading fire sprite: {e}")
-                fallback = pygame.Surface((40, 30))
-                fallback.fill((255, 100, 0))  # Orange for fire
-                obstacle_sprites['fire'] = fallback
-                fire_animation_frames = [fallback] * 3  # Create 3 identical frames as fallback
-            
-            # Load saw animation frames (sprite sheet with 8 frames)
-            try:
-                saw_path = "assets/images/obstacles/saw.png"
-                saw_sprite_sheet = pygame.image.load(saw_path).convert_alpha()
-                
-                # Get the dimensions of the sprite sheet
-                sheet_width = saw_sprite_sheet.get_width()
-                sheet_height = saw_sprite_sheet.get_height()
-                
-                # Assuming the saw sprite sheet has 8 frames horizontally
-                frame_width = sheet_width // 8
-                
-                # Extract each frame from the sprite sheet
-                for i in range(8):
-                    # Create a subsurface for each frame
-                    frame_rect = pygame.Rect(i * frame_width, 0, frame_width, sheet_height)
-                    frame = saw_sprite_sheet.subsurface(frame_rect)
-                    saw_animation_frames.append(frame)
-                
-                # Store the first frame as the base sprite
-                obstacle_sprites['saw'] = saw_animation_frames[0]
-                print("Successfully loaded saw sprite sheet with 8 frames")
-            except Exception as e:
-                print(f"Error loading saw sprite: {e}")
-                fallback = pygame.Surface((30, 30))
-                fallback.fill((200, 200, 200))  # Gray for saw
-                obstacle_sprites['saw'] = fallback
-                saw_animation_frames = [fallback] * 8  # Create 8 identical frames as fallback
-            
-            # Load bomb animation frames
-            bomb_dir = "assets/images/obstacles/bomb"
-            for i in range(1, 11):  # 10 frames
-                path = f"{bomb_dir}/{i}.png"
-                try:
-                    frame = pygame.image.load(path).convert_alpha()
-                    bomb_animation_frames.append(frame)
-                except Exception as e:
-                    print(f"Error loading bomb frame {i}: {e}")
-            
-            # Load explosion animation frames
-            explosion_dir = "assets/images/obstacles/bomb_explosion"
-            for i in range(1, 10):  # 9 frames
-                path = f"{explosion_dir}/{i}.png"
-                try:
-                    frame = pygame.image.load(path).convert_alpha()
-                    explosion_animation_frames.append(frame)
-                except Exception as e:
-                    print(f"Error loading explosion frame {i}: {e}")
-                
-            print("Successfully loaded obstacle sprites")
-        except Exception as e:
-            print(f"Error loading obstacle sprites: {e}")
-            exit()
-        
-        print("Successfully loaded all textures and sprites")
-    except Exception as e:
-        print(f"Error loading textures: {e}")
-        exit()
-
 class Floor:
     def __init__(self, x, width):
         self.x = x
@@ -169,11 +27,8 @@ class Floor:
         self.y = PLAY_AREA_HEIGHT - self.height
 
     def draw(self, screen, camera_x):
-        global ground_texture
-        
-        # Load textures if not loaded yet
-        if ground_texture is None:
-            load_textures()
+        # Get the ground texture from asset_loader
+        ground_texture = assets_loader.get_ground_texture()
             
         # Draw textured floor by tiling the texture
         rect = pygame.Rect(self.x - camera_x, self.y, self.width, self.height)
@@ -206,11 +61,8 @@ class Platform:
         self.height = 20
 
     def draw(self, screen, camera_x):
-        global platform_texture
-        
-        # Load textures if not loaded yet
-        if platform_texture is None:
-            load_textures()
+        # Get the platform texture from asset_loader
+        platform_texture = assets_loader.get_platform_texture()
 
         # Calculate how many complete tiles we need
         texture_width = platform_texture.get_width()
@@ -297,21 +149,27 @@ class Obstacle:
         """Calculate how many times to duplicate the base sprite for width-based obstacles"""
         self.duplications = 1  # Default is 1 (no duplication)
         
-        if self.type == 'spikes' and 'spikes' in obstacle_sprites:
-            # Calculate how many spikes to place side by side
-            spike_width = obstacle_sprites['spikes'].get_width()
-            if spike_width > 0:
-                self.duplications = max(1, int(self.width / spike_width))
-                # Adjust width to match actual duplications
-                self.width = spike_width * self.duplications
+        if self.type == 'spikes':
+            # Get the spikes sprite from assets_loader
+            spike_sprite = assets_loader.get_obstacle_sprite('spikes')
+            if spike_sprite:
+                # Calculate how many spikes to place side by side
+                spike_width = spike_sprite.get_width()
+                if spike_width > 0:
+                    self.duplications = max(1, int(self.width / spike_width))
+                    # Adjust width to match actual duplications
+                    self.width = spike_width * self.duplications
         
-        elif self.type == 'fire' and len(fire_animation_frames) > 0:
-            # Calculate how many fire sprites to place side by side
-            fire_width = fire_animation_frames[0].get_width()
-            if fire_width > 0:
-                self.duplications = max(1, int(self.width / fire_width))
-                # Adjust width to match actual duplications
-                self.width = fire_width * self.duplications
+        elif self.type == 'fire':
+            # Get fire animation frames from assets_loader
+            fire_frames = assets_loader.get_fire_animation_frames()
+            if fire_frames and len(fire_frames) > 0:
+                # Calculate how many fire sprites to place side by side
+                fire_width = fire_frames[0].get_width()
+                if fire_width > 0:
+                    self.duplications = max(1, int(self.width / fire_width))
+                    # Adjust width to match actual duplications
+                    self.width = fire_width * self.duplications
         
     def adjust_collision_box(self):
         """Adjust the collision box based on obstacle type"""
@@ -348,6 +206,7 @@ class Obstacle:
         if self.type == 'bomb' and self.exploded:
             # Only return explosion collision during the active explosion frames
             # Once the explosion is complete, return an empty rectangle
+            explosion_animation_frames = assets_loader.get_explosion_animation_frames()
             if self.explosion_frame_index < len(explosion_animation_frames):
                 # Explosion has a blast radius of 3x the bomb size
                 blast_radius = self.width * 3
@@ -374,20 +233,23 @@ class Obstacle:
         
         if self.type == 'saw':
             # Update saw animation frame
-            if self.animation_time >= 0.1:
+            saw_animation_frames = assets_loader.get_saw_animation_frames()
+            if self.animation_time >= 0.1 and saw_animation_frames:
                 self.animation_time = 0
                 self.frame_index = (self.frame_index + 1) % len(saw_animation_frames)
         
         elif self.type == 'fire':
             # Update fire animation frame
-            if self.animation_time >= 0.15:
+            fire_animation_frames = assets_loader.get_fire_animation_frames()
+            if self.animation_time >= 0.15 and fire_animation_frames:
                 self.animation_time = 0
                 self.frame_index = (self.frame_index + 1) % len(fire_animation_frames)
         
         elif self.type == 'bomb':
             if not self.exploded:
                 # Update bomb animation
-                if self.animation_time >= 0.1:
+                bomb_animation_frames = assets_loader.get_bomb_animation_frames()
+                if self.animation_time >= 0.1 and bomb_animation_frames:
                     self.animation_time = 0
                     self.frame_index = (self.frame_index + 1) % len(bomb_animation_frames)
                 
@@ -398,8 +260,9 @@ class Obstacle:
                         self.start_explosion()
             else:
                 # Update explosion animation
+                explosion_animation_frames = assets_loader.get_explosion_animation_frames()
                 self.explosion_time += dt
-                if self.explosion_time >= 0.1:
+                if self.explosion_time >= 0.1 and explosion_animation_frames:
                     self.explosion_time = 0
                     self.explosion_frame_index += 1
                     if self.explosion_frame_index >= len(explosion_animation_frames):
@@ -454,8 +317,8 @@ class Obstacle:
         # Draw based on obstacle type
         if self.type == 'spikes':
             # Draw spikes by duplicating the sprite horizontally
-            if 'spikes' in obstacle_sprites:
-                spike_sprite = obstacle_sprites['spikes']
+            spike_sprite = assets_loader.get_obstacle_sprite('spikes')
+            if spike_sprite:
                 spike_width = spike_sprite.get_width()
                 
                 # Draw each spike side by side
@@ -476,6 +339,7 @@ class Obstacle:
                 
         elif self.type == 'fire':
             # Draw fire by duplicating the current animation frame horizontally
+            fire_animation_frames = assets_loader.get_fire_animation_frames()
             if fire_animation_frames and len(fire_animation_frames) > 0:
                 # Get the current animation frame
                 fire_frame = fire_animation_frames[self.frame_index]
@@ -499,6 +363,7 @@ class Obstacle:
                 
         elif self.type == 'saw':
             # Draw animated saw - just one frame at a time
+            saw_animation_frames = assets_loader.get_saw_animation_frames()
             if saw_animation_frames and len(saw_animation_frames) > 0:
                 # Get the current animation frame
                 saw_frame = saw_animation_frames[self.frame_index]
@@ -524,6 +389,7 @@ class Obstacle:
         elif self.type == 'bomb':
             if not self.exploded:
                 # Draw bomb
+                bomb_animation_frames = assets_loader.get_bomb_animation_frames()
                 if bomb_animation_frames and len(bomb_animation_frames) > 0:
                     frame = bomb_animation_frames[self.frame_index]
                     scaled_frame = pygame.transform.scale(frame, (self.width, self.height))
@@ -535,6 +401,7 @@ class Obstacle:
                     pygame.draw.rect(screen, (0, 0, 0), (self.x - camera_x, self.y + self.height / 5, self.width, self.height))
             else:
                 # Draw explosion
+                explosion_animation_frames = assets_loader.get_explosion_animation_frames()
                 if explosion_animation_frames and len(explosion_animation_frames) > 0 and self.explosion_frame_index < len(explosion_animation_frames):
                     frame = explosion_animation_frames[self.explosion_frame_index]
                     # Explosion is 3x the size of the bomb
@@ -589,11 +456,8 @@ class Coin:
             self.animation_time = 0
 
     def draw(self, screen, camera_x):
-        global coin_sprite
-        
-        # Load textures if not loaded yet
-        if coin_sprite is None:
-            load_textures()
+        # Get the coin sprite from asset_loader
+        coin_sprite = assets_loader.get_coin_sprite()
             
         # Create a rotated copy of the sprite for animation
         if self.rotation != 0:
@@ -649,15 +513,9 @@ class PowerUp:
         self.center_y = self.y + self.radius
 
     def draw(self, screen, camera_x):
-        global powerup_sprites
-        
-        # Load textures if not loaded yet
-        if not powerup_sprites:
-            load_textures()
+        # Get the sprite for this power-up type from asset_loader
+        sprite = assets_loader.get_powerup_sprite(self.type)
             
-        # Get the sprite for this power-up type
-        sprite = powerup_sprites[self.type]
-        
         # Apply pulsing effect
         current_size = int(self.width * self.pulse_scale)
         if current_size != self.width:

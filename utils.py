@@ -1,5 +1,6 @@
 import pygame
-from constants import FONT_PATH, LIGHT_BLUE, PLAY_AREA_HEIGHT
+from constants.paths import FONT_PATH
+from assets_loader import get_font, get_background_layers, get_background_widths
 
 # Font cache to store loaded fonts by size
 _font_cache = {}
@@ -37,7 +38,7 @@ def get_retro_font(size):
 
 def render_retro_text(text, size, color, max_width=None):
     """Render text with proper wrapping to prevent cutoff."""
-    font = get_retro_font(size)
+    font = get_font(size)
     
     # If no max width specified or text fits, render normally
     if max_width is None or font.size(text)[0] <= max_width:
@@ -103,29 +104,13 @@ def collide(rect1, rect2):
 
 def draw_background(screen, camera_x=0):
     """Draw a parallax background using the Glacial Mountains assets."""
-    # Load background layers (only once)
-    global background_layers, background_widths
-    if 'background_layers' not in globals():
-        # Load the background images
-        background_layers = [
-            pygame.image.load('assets/images/background/sky_lightened.png').convert_alpha(),
-            pygame.image.load('assets/images/background/clouds_bg.png').convert_alpha(),
-            pygame.image.load('assets/images/background/glacial_mountains_lightened.png').convert_alpha(),
-            pygame.image.load('assets/images/background/clouds_mg_3.png').convert_alpha(),
-            pygame.image.load('assets/images/background/clouds_mg_2.png').convert_alpha(),
-            pygame.image.load('assets/images/background/cloud_lonely.png').convert_alpha(),
-            pygame.image.load('assets/images/background/clouds_mg_1_lightened.png').convert_alpha(),
-        ]
-        
-        # Scale the background layers to fit the screen height
-        background_widths = []
-        for i in range(len(background_layers)):
-            # Scale to match play area height while maintaining aspect ratio
-            orig_width, orig_height = background_layers[i].get_size()
-            scale_factor = PLAY_AREA_HEIGHT / orig_height
-            new_width = int(orig_width * scale_factor)
-            background_layers[i] = pygame.transform.scale(background_layers[i], (new_width, PLAY_AREA_HEIGHT))
-            background_widths.append(new_width)
+    # Get background layers and widths from asset_loader
+    background_layers = get_background_layers()
+    background_widths = get_background_widths()
+    
+    if not background_layers or not background_widths:
+        print("Warning: No background layers or widths loaded")
+        exit()
     
     # Draw each layer with parallax effect
     # Different layers move at different speeds
@@ -135,6 +120,9 @@ def draw_background(screen, camera_x=0):
     screen_width = screen.get_width()
     
     for i, layer in enumerate(background_layers):
+        if i >= len(parallax_factors):
+            break
+            
         # Calculate the parallax offset for this layer
         # Use int() to ensure we get pixel-perfect positioning
         layer_offset = int(-(camera_x * parallax_factors[i])) % background_widths[i]

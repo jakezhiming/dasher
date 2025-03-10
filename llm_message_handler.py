@@ -1,48 +1,7 @@
 import os
 import random
 from openai import AsyncOpenAI
-
-# List of personality types for the LLM to use
-PERSONALITIES = [
-    "pirate",
-    "robot",
-    "medieval knight", 
-    "valley girl",
-    "wise old wizard",
-    "excited puppy",
-    "grumpy cat",
-    "superhero",
-    "alien visitor",
-    "cowboy",
-    "ninja",
-    "poet",
-    "detective",
-    "space explorer",
-    "time traveler",
-    "mad scientist",
-    "dragon",
-    "ghost",
-    "vampire",
-    "fairy godparent",
-    "surfer dude",
-    "game show host",
-    "conspiracy theorist",
-    "fortune teller",
-    "sassy barista",
-    "sarcastic friend",
-    "drill sergeant",
-    "sports commentator",
-    "dissapointed parent",
-    "annoyed teacher",
-    "frustrated cashier",
-    "angry customer",
-    "weather forecaster",
-    "motivational speaker",
-    "shakespearean actor",
-    "tech support",
-    "royal monarch",
-    "circus ringmaster"
-]
+from constants.messages import PERSONALITIES
 
 class LLMMessageHandler:
     def __init__(self):
@@ -57,7 +16,6 @@ class LLMMessageHandler:
         
         # Choose a random personality at startup
         self.personality = random.choice(PERSONALITIES)
-        print(f"Game messages will be in the style of a {self.personality}")
         
         # For storing the streaming response
         self.current_message = ""
@@ -77,7 +35,8 @@ class LLMMessageHandler:
             self.current_message = ""
             
             prompt = f"""Rephrase the following message in the style of a {self.personality}. 
-            Keep it very short (within one sentence if possible) and game-appropriate:
+            Keep it very short (within one sentence if possible) and game-appropriate.
+            Do not use any emojis or special characters.
             
             Message: {original_message}"""
             

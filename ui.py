@@ -2,41 +2,30 @@ import pygame
 import math
 import asyncio
 import threading
-from constants import (
-    PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH, HEIGHT,
-    BLACK, DARK_GREY, GRAY, RED, WHITE,
-    INVINCIBILITY_FROM_DAMAGE_DURATION, HEART_SPRITE_PATH,
-    HEART_SPRITE_SIZE, MESSAGE_CHAR_DELAY, DEFAULT_MESSAGE_DELAY,
-    WHITE_OVERLAY, BLUE, CYAN, MAGENTA,
-    SPEED_BOOST_DURATION, INVINCIBILITY_DURATION
+from constants.colors import (
+    BLUE, CYAN, MAGENTA, RED, WHITE, WHITE_OVERLAY, BLACK, GRAY, DARK_GREY
+)
+from constants.screen import (
+    PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH
+)
+from constants.ui import HEART_SPRITE_SIZE
+from constants.player import INVINCIBILITY_FROM_DAMAGE_DURATION, INVINCIBILITY_DURATION, SPEED_BOOST_DURATION
+from constants.ui import (
+    MESSAGE_CHAR_DELAY, DEFAULT_MESSAGE_DELAY, 
 )
 from utils import render_retro_text, get_retro_font
-from sprite_loader import player_frames, get_frame
+from assets_loader import player_frames, get_frame, get_heart_sprite
 from llm_message_handler import LLMMessageHandler
 
-heart_sprite = None
 heart_sprite_size = HEART_SPRITE_SIZE
 heart_flash_time = 0
 heart_flash_duration = INVINCIBILITY_FROM_DAMAGE_DURATION 
-# New variables for heart pop-in effect
 new_heart_index = -1  # Index of the newly added heart (-1 means no new heart)
 new_heart_time = 0    # Time when the new heart was added
 new_heart_duration = 300  # Duration of the pop-in effect in milliseconds
-# Variables for the "+X" indicator animation
 plus_indicator_active = False
 plus_indicator_time = 0
 plus_indicator_duration = 300  # Duration of the "+X" animation in milliseconds
-
-def load_heart_sprite():
-    """Load the heart sprite image."""
-    global heart_sprite, heart_sprite_size
-    try:
-        heart_sprite = pygame.image.load(HEART_SPRITE_PATH).convert_alpha()
-        heart_sprite_size = HEART_SPRITE_SIZE
-        print(f"Successfully loaded heart sprite from {HEART_SPRITE_PATH}")
-    except Exception as e:
-        print(f"Error loading heart sprite: {e}")
-        exit()
 
 def set_hearts_flash():
     """Set the hearts to flash (call this when player loses a life)."""
@@ -59,14 +48,10 @@ def set_plus_indicator_animation():
 
 def draw_heart(screen, x, y, size=HEART_SPRITE_SIZE, color=None, flashing=False, is_new=False):
     """Draw a heart at the specified position with the given size."""
-    global heart_sprite, heart_sprite_size
+    global heart_sprite_size
     
-    # Load the sprite if it hasn't been loaded yet
-    if heart_sprite is None:
-        load_heart_sprite()
-    
-    # Create a copy of the sprite for potential color modification
-    sprite_to_use = heart_sprite.copy() if (flashing or is_new) else heart_sprite
+    # Get the heart sprite from asset_loader
+    sprite_to_use = get_heart_sprite().copy() if (flashing or is_new) else get_heart_sprite()
     
     # If flashing, apply a white tint
     if flashing:
@@ -243,7 +228,7 @@ class StatusMessageManager:
             # If there are messages in the queue, show the next one after the delay
             if self.message_queue and current_time - self.message_completed_time > self.message_transition_delay:
                 self._load_next_message()
-            
+        
         return self.current_message
     
     def can_show_default_message(self):
@@ -512,6 +497,19 @@ def draw_active_powerups(screen, player, current_time):
         # Draw the power-up indicator
         pygame.draw.circle(screen, color, (x_pos, indicator_y), pulse_size)
         
+        
+        # Add radial gradient texture (concentric circles with varying opacity)
+        for i in range(3):
+            inner_radius = int(pulse_size * (0.7 - i * 0.2))
+            if inner_radius > 0:
+                # Create a slightly darker shade of the original color for inner circles
+                darker_color = (
+                    max(0, color[0] - 30),
+                    max(0, color[1] - 30),
+                    max(0, color[2] - 30)
+                )
+                pygame.draw.circle(screen, darker_color, (x_pos, indicator_y), inner_radius)
+        
         # Draw an icon or symbol inside the circle based on power-up type
         if powerup_type == 'speed':
             # Draw lightning bolt symbol for speed
@@ -578,7 +576,7 @@ def draw_debug_info(screen, player):
     line_height = 25
     
     # Calculate difficulty percentage
-    from constants import DIFFICULTY_START_DISTANCE, DIFFICULTY_MAX_DISTANCE
+    from constants.difficulty import DIFFICULTY_START_DISTANCE, DIFFICULTY_MAX_DISTANCE
     if player.x <= DIFFICULTY_START_DISTANCE:
         difficulty_percentage = 0
     elif player.x >= DIFFICULTY_MAX_DISTANCE:
@@ -617,7 +615,7 @@ def draw_debug_info(screen, player):
     y_pos += line_height
     
     # Display current LLM personality
-    personality_text = render_retro_text(f"LLM Personality: {message_manager.get_current_personality()}", 12, BLACK)
+    personality_text = render_retro_text(f"Personality: {message_manager.get_current_personality()}", 12, BLACK)
     screen.blit(personality_text, (10, y_pos))
     y_pos += line_height
     
