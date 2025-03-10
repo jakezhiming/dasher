@@ -14,9 +14,6 @@ from utils import render_retro_text, get_retro_font
 from sprite_loader import player_frames, get_frame
 from llm_message_handler import LLMMessageHandler
 
-# Create a global event for LLM message updates
-LLM_MESSAGE_UPDATE = pygame.USEREVENT + 1
-
 heart_sprite = None
 heart_sprite_size = HEART_SPRITE_SIZE
 heart_flash_time = 0
@@ -138,6 +135,10 @@ class StatusMessageManager:
         self.thread = threading.Thread(target=self._run_event_loop, daemon=True)
         self.thread.start()
         
+        # Add a delay between messages in the queue
+        self.message_transition_delay = 500  # 500ms delay between messages
+        self.message_completed_time = 0  # Track when a message was fully displayed
+        
         # Initialize with a welcome message
         self.set_message("Welcome to Dasher! Use arrow keys to move and SPACE to jump.")
     
@@ -207,12 +208,16 @@ class StatusMessageManager:
         
         # Get the next message from the queue
         next_message = self.message_queue.pop(0)
+        print(f"Status Message: {next_message}")
+
+        current_time = pygame.time.get_ticks()
+        self.last_message_time = current_time
         self.target_message = next_message
         self.current_full_message = next_message
         
         # Reset display index and timing for the character-by-character animation
         self.display_index = 0
-        self.last_char_time = pygame.time.get_ticks()
+        self.last_char_time = current_time
         
         return True
     
@@ -230,12 +235,13 @@ class StatusMessageManager:
                 # If we just finished displaying the message, record the time
                 if self.display_index == len(self.target_message):
                     self.last_message_time = current_time
+                    self.message_completed_time = current_time
         else:
             # Message is fully displayed
             self.current_message = self.target_message
             
-            # If there are messages in the queue, show the next one
-            if self.message_queue:
+            # If there are messages in the queue, show the next one after the delay
+            if self.message_queue and current_time - self.message_completed_time > self.message_transition_delay:
                 self._load_next_message()
             
         return self.current_message
@@ -251,12 +257,6 @@ class StatusMessageManager:
         return (current_time - self.last_message_time > self.default_message_delay and
                 not self.message_queue and
                 (not self.target_message or (self.target_message and self.display_index == len(self.target_message))))
-    
-    def set_default_message_shown(self):
-        """Mark that a default message has been shown and cycle to the next one."""
-        self.last_message_time = pygame.time.get_ticks()
-        # Increment the default message index to cycle through the messages
-        self.default_message_index = (self.default_message_index + 1) % 5  # Cycle through 5 default messages
     
     def get_previous_message(self):
         """Get the previous message."""
@@ -297,18 +297,20 @@ def get_status_message():
         # Get the current default message
         current_default_message = default_messages[message_manager.default_message_index]
         
-        # Increment the index first to avoid showing the same message twice in a row
-        message_manager.set_default_message_shown()
-        
         # Only set the message if it's different from the current and previous messages
         if (current_default_message != message_manager.current_full_message and 
             current_default_message != message_manager.previous_message):
+            # Set the message first
             message_manager.set_message(current_default_message)
+            # Then update the last_message_time and increment the default message index
+            message_manager.last_message_time = pygame.time.get_ticks()
+            # Increment the default message index to cycle through the messages
+            message_manager.default_message_index = (message_manager.default_message_index + 1) % 5
     
     # Update and return the current streaming message
     return message_manager.update()
 
-def draw_status_bar(screen, player):
+def draw_ui(screen, player):
     # Check if hearts should be flashing
     current_time = pygame.time.get_ticks()
     hearts_flashing = (current_time - heart_flash_time < heart_flash_duration)

@@ -66,7 +66,7 @@ DEFAULT_OBSTACLE_SIZE = 30
 # ===== UI CONSTANTS =====
 HEART_SPRITE_SIZE = 32
 MESSAGE_CHAR_DELAY = 5            # ms between characters in scrolling text
-DEFAULT_MESSAGE_DELAY = 5000      # ms between default messages
+DEFAULT_MESSAGE_DELAY = 7000      # ms between default messages
 
 # ===== ANIMATION CONSTANTS =====
 PLAYER_ANIMATION_SPEED = 0.2      # Frames per second

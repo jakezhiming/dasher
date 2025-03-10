@@ -1,15 +1,8 @@
 import pygame
-import random
-import os
-import asyncio
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
-
-# Set up asyncio event loop for Windows
-if os.name == 'nt':
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # Import from our modules
 from constants import (
@@ -21,7 +14,7 @@ from constants import (
 from utils import render_retro_text, draw_background
 from player import Player
 from game_objects import Floor, Platform, Obstacle, Coin, PowerUp, load_textures
-from ui import draw_status_bar, draw_debug_info, message_manager, LLM_MESSAGE_UPDATE
+from ui import draw_ui, draw_debug_info, message_manager
 import input_handler
 from level_generator import generate_new_segment, remove_old_objects
 from sprite_loader import load_player_sprites
@@ -79,7 +72,6 @@ while running:
         if game_over:
             game_state = GAME_LOST_MESSAGE
             game_over_timer = pygame.time.get_ticks()
-            message_manager.set_message("Game Over! Your final score: " + str(player.score))
         
         camera_x = input_handler.update_scroll(player, camera_x)
         
@@ -117,7 +109,7 @@ while running:
         # Draw collection effects
         effect_manager.draw(screen, camera_x)
         
-        draw_status_bar(screen, player)
+        draw_ui(screen, player)
         
         # Draw debug info if enabled
         if input_handler.show_debug:
@@ -151,7 +143,7 @@ while running:
         # Draw collection effects
         effect_manager.draw(screen, camera_x)
         
-        draw_status_bar(screen, player)
+        draw_ui(screen, player)
         
         # Draw game over text
         game_over_text = render_retro_text("GAME OVER", 36, RED)
