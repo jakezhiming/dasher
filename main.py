@@ -1,4 +1,5 @@
 import pygame
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,162 +18,219 @@ import input_handler
 from level_generator import generate_new_segment, remove_old_objects
 from effects import effect_manager
 
+# Try to import web-specific UI components
+try:
+    from web_ui import ApiKeyInput, is_web_environment, load_api_key_from_storage
+    IS_WEB = is_web_environment()
+except ImportError:
+    IS_WEB = False
+
 # Initialize Pygame
 pygame.init()
 
 # Screen setup
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Dasher")
 clock = pygame.time.Clock()
 
 # Load game assets
 load_all_assets()  # Load all game assets using the asset_loader
 
-# Initialize game
-player = Player()
-camera_x = 0
-rightmost_floor_end = WIDTH
-# Create initial floor that's wide enough for the starting area
-floors = [Floor(0, WIDTH)]
-platforms = []
-obstacles = []
-coins = []
-power_ups = []
-game_over = False
-game_state = GAME_RUNNING
-game_over_timer = 0
-player_has_moved = False
+# Load API key from localStorage if in web environment
+api_key_input = None
+if IS_WEB:
+    load_api_key_from_storage()
+    # Create API key input field
+    api_key_input = ApiKeyInput(50, 50, 400, 30)
 
-# Main loop
-running = True
-frame_count = 0
-last_time = pygame.time.get_ticks()
-while running:
-    # Calculate delta time for smooth animations
-    current_time = pygame.time.get_ticks()
-    dt = (current_time - last_time) / 1000.0  # Convert to seconds
-    last_time = current_time
+async def main():
+    # Initialize game
+    player = Player()
+    camera_x = 0
+    rightmost_floor_end = WIDTH
+    # Create initial floor that's wide enough for the starting area
+    floors = [Floor(0, WIDTH)]
+    platforms = []
+    obstacles = []
+    coins = []
+    power_ups = []
+    game_over = False
+    game_state = GAME_RUNNING
+    game_over_timer = 0
+    player_has_moved = False
     
-    frame_count += 1
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    # Web-specific settings
+    show_api_key_input = IS_WEB and not message_manager.llm_handler.is_available()
+    pending_api_test = False
 
-    if game_state == GAME_RUNNING:
-        # Game logic
-        player_has_moved = input_handler.handle_input(player) or player_has_moved
+    # Main loop
+    running = True
+    frame_count = 0
+    last_time = pygame.time.get_ticks()
+    
+    while running:
+        # Calculate delta time for smooth animations
+        current_time = pygame.time.get_ticks()
+        dt = (current_time - last_time) / 1000.0  # Convert to seconds
+        last_time = current_time
+        
+        frame_count += 1
+        
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.VIDEORESIZE:
+                # Handle window resize for web compatibility
+                pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
             
-        game_over = player.update(floors, platforms, obstacles, coins, power_ups)
-        
-        # If game_over is True, the player has completed their death animation
-        if game_over:
-            game_state = GAME_LOST_MESSAGE
-            game_over_timer = pygame.time.get_ticks()
-        
-        camera_x = input_handler.update_scroll(player, camera_x)
-        
-        # Update animations for coins and power-ups
-        for coin in coins:
-            coin.update(dt)
-        for power_up in power_ups:
-            power_up.update(dt)
-        # Update animations for obstacles
-        for obstacle in obstacles:
-            obstacle.update(dt)
-        
-        # Update collection effects
-        effect_manager.update(dt)
-        
-        if camera_x + WIDTH > rightmost_floor_end - 600:
-            rightmost_floor_end = generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, camera_x, WIDTH)
-        
-        floors, platforms, obstacles, coins, power_ups = remove_old_objects(player, floors, platforms, obstacles, coins, power_ups)
+            # Handle API key input in web version
+            if IS_WEB and show_api_key_input and api_key_input:
+                if api_key_input.handle_event(event):
+                    # If API key was saved, update the LLM handler
+                    if api_key_input.saved:
+                        message_manager.llm_handler.api_key = api_key_input.text
+                        # Check if we should still show the input
+                        show_api_key_input = not message_manager.llm_handler.is_available()
+                    
+                    # Check if we need to test the API key
+                    if api_key_input.testing:
+                        pending_api_test = True
 
-        # Draw background
-        draw_background(screen, camera_x)
-        for floor in floors:
-            floor.draw(screen, camera_x)
-        for platform in platforms:
-            platform.draw(screen, camera_x)
-        for obstacle in obstacles:
-            obstacle.draw(screen, camera_x)
-        for coin in coins:
-            coin.draw(screen, camera_x)
-        for power_up in power_ups:
-            power_up.draw(screen, camera_x)
-        player.draw(screen, camera_x)
-        
-        # Draw collection effects
-        effect_manager.draw(screen, camera_x)
-        
-        draw_ui(screen, player)
-        
-        # Draw debug info if enabled
-        if input_handler.show_debug:
-            draw_debug_info(screen, player)
+        # Handle pending API key test
+        if pending_api_test and api_key_input:
+            await api_key_input._test_api_key()
+            pending_api_test = False
+
+        if game_state == GAME_RUNNING:
+            # Game logic
+            player_has_moved = input_handler.handle_input(player) or player_has_moved
+                
+            game_over = player.update(floors, platforms, obstacles, coins, power_ups)
             
-        # Draw welcome text if player hasn't moved yet
-        if not player_has_moved:
-            text = render_retro_text("Welcome to Dasher", 28, BLUE)
-            text_rect = text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2 - 50))
-            screen.blit(text, text_rect)
-    
-    elif game_state == GAME_LOST_MESSAGE:
-        # Show game over message for a few seconds
-        if pygame.time.get_ticks() - game_over_timer > GAME_OVER_DISPLAY_DURATION:
-            game_state = GAME_OVER
-        
-        # Continue drawing the game state
-        draw_background(screen, camera_x)
-        for floor in floors:
-            floor.draw(screen, camera_x)
-        for platform in platforms:
-            platform.draw(screen, camera_x)
-        for obstacle in obstacles:
-            obstacle.draw(screen, camera_x)
-        for coin in coins:
-            coin.draw(screen, camera_x)
-        for power_up in power_ups:
-            power_up.draw(screen, camera_x)
-        player.draw(screen, camera_x)
-        
-        # Draw collection effects
-        effect_manager.draw(screen, camera_x)
-        
-        draw_ui(screen, player)
-        
-        # Draw game over text
-        game_over_text = render_retro_text("GAME OVER", 36, RED)
-        game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2 - 50))
-        screen.blit(game_over_text, game_over_rect)
-        
-        score_text = render_retro_text(f"Final Score: {player.score}", 24, BLUE)
-        score_rect = score_text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2))
-        screen.blit(score_text, score_rect)
-    
-    elif game_state == GAME_OVER:
-        # Reset the game
-        player = Player()
-        camera_x = 0
-        rightmost_floor_end = WIDTH
-        floors = [Floor(0, WIDTH)]
-        platforms = []
-        obstacles = []
-        coins = []
-        power_ups = []
-        game_over = False
-        game_state = GAME_RUNNING
-        player_has_moved = False
-        
-        # Change to a new LLM personality
-        new_personality = message_manager.llm_handler.change_personality()
-        message_manager.set_message(f"Welcome back! I'm now speaking like a {new_personality}.")
+            # If game_over is True, the player has completed their death animation
+            if game_over:
+                game_state = GAME_LOST_MESSAGE
+                game_over_timer = pygame.time.get_ticks()
+            
+            camera_x = input_handler.update_scroll(player, camera_x)
+            
+            # Update animations for coins and power-ups
+            for coin in coins:
+                coin.update(dt)
+            for power_up in power_ups:
+                power_up.update(dt)
+            # Update animations for obstacles
+            for obstacle in obstacles:
+                obstacle.update(dt)
+            
+            # Update collection effects
+            effect_manager.update(dt)
+            
+            if camera_x + WIDTH > rightmost_floor_end - 600:
+                rightmost_floor_end = generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, camera_x, WIDTH)
+            
+            floors, platforms, obstacles, coins, power_ups = remove_old_objects(player, floors, platforms, obstacles, coins, power_ups)
 
-    # Update the message manager
-    message_manager.update()
-    
-    # Update the display
-    pygame.display.flip()
-    clock.tick(60)  # 60 FPS
+            # Draw background
+            draw_background(screen, camera_x)
+            for floor in floors:
+                floor.draw(screen, camera_x)
+            for platform in platforms:
+                platform.draw(screen, camera_x)
+            for obstacle in obstacles:
+                obstacle.draw(screen, camera_x)
+            for coin in coins:
+                coin.draw(screen, camera_x)
+            for power_up in power_ups:
+                power_up.draw(screen, camera_x)
+            player.draw(screen, camera_x)
+            
+            # Draw collection effects
+            effect_manager.draw(screen, camera_x)
+            
+            draw_ui(screen, player)
+            
+            # Draw debug info if enabled
+            if input_handler.show_debug:
+                draw_debug_info(screen, player)
+                
+            # Draw welcome text if player hasn't moved yet
+            if not player_has_moved:
+                text = render_retro_text("Welcome to Dasher", 28, BLUE)
+                text_rect = text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2 - 50))
+                screen.blit(text, text_rect)
+        
+        elif game_state == GAME_LOST_MESSAGE:
+            # Show game over message for a few seconds
+            if pygame.time.get_ticks() - game_over_timer > GAME_OVER_DISPLAY_DURATION:
+                game_state = GAME_OVER
+            
+            # Continue drawing the game state
+            draw_background(screen, camera_x)
+            for floor in floors:
+                floor.draw(screen, camera_x)
+            for platform in platforms:
+                platform.draw(screen, camera_x)
+            for obstacle in obstacles:
+                obstacle.draw(screen, camera_x)
+            for coin in coins:
+                coin.draw(screen, camera_x)
+            for power_up in power_ups:
+                power_up.draw(screen, camera_x)
+            player.draw(screen, camera_x)
+            
+            # Draw collection effects
+            effect_manager.draw(screen, camera_x)
+            
+            draw_ui(screen, player)
+            
+            # Draw game over text
+            game_over_text = render_retro_text("GAME OVER", 36, RED)
+            game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2 - 50))
+            screen.blit(game_over_text, game_over_rect)
+            
+            score_text = render_retro_text(f"Final Score: {player.score}", 24, BLUE)
+            score_rect = score_text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2))
+            screen.blit(score_text, score_rect)
+        
+        elif game_state == GAME_OVER:
+            # Reset the game
+            player = Player()
+            camera_x = 0
+            rightmost_floor_end = WIDTH
+            floors = [Floor(0, WIDTH)]
+            platforms = []
+            obstacles = []
+            coins = []
+            power_ups = []
+            game_over = False
+            game_state = GAME_RUNNING
+            player_has_moved = False
+            
+            # Change to a new LLM personality
+            try:
+                new_personality = message_manager.llm_handler.change_personality()
+                message_manager.set_message(f"Welcome back! I'm now speaking like a {new_personality}.")
+            except Exception as e:
+                # Handle case where LLM is not available
+                message_manager.set_message("Welcome back! Let's play again!")
 
-pygame.quit()
+        # Update the message manager
+        message_manager.update()
+        
+        # Draw API key input in web version if needed
+        if IS_WEB and show_api_key_input and api_key_input:
+            api_key_input.draw(screen)
+        
+        # Update the display
+        pygame.display.flip()
+        clock.tick(60)  # 60 FPS
+        
+        # This is needed for Pygbag to work properly
+        await asyncio.sleep(0)
+
+    pygame.quit()
+
+# This is the entry point for Pygbag
+asyncio.run(main())

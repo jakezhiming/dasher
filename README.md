@@ -74,3 +74,173 @@ python main.py
 This game was developed using:
 - Python
 - Pygame for rendering and game logic
+
+## Building for Web with Pygbag
+
+[Pygbag](https://pygame-web.github.io/pygbag/) is a tool that allows you to package and run Pygame games in web browsers using WebAssembly. This section explains how to build and deploy Dasher for the web.
+
+### Prerequisites
+
+1. Install Pygbag:
+   ```bash
+   pip install pygbag
+   ```
+
+2. Make sure your game is compatible with Pygbag:
+   - The game has been updated to use asyncio for the main loop
+   - OpenAI API integration has been adapted for web environment
+
+### Building the Game
+
+1. Run the build script:
+   ```bash
+   python pygbag_build.py
+   ```
+
+2. The built files will be in the `build/web` directory.
+
+3. To test locally:
+   ```bash
+   python -m http.server --directory build/web
+   ```
+   Then open a browser and go to: http://localhost:8000
+
+### Using OpenAI API in Web Version
+
+The web version supports OpenAI API integration for AI-powered messages. There are two ways to use this feature:
+
+#### Option 1: Using a Proxy Server (Recommended)
+
+This approach is more reliable and secure, as it avoids CORS issues and keeps your API key on the server.
+
+1. Install the proxy server dependencies:
+   ```bash
+   pip install flask flask-cors requests
+   ```
+
+2. Start the proxy server:
+   ```bash
+   python proxy_server.py --port 5000 --host 0.0.0.0 --log-file proxy.log
+   ```
+   
+   Available options:
+   - `--port`: Port to run the server on (default: 5000)
+   - `--host`: Host to run the server on (default: 0.0.0.0)
+   - `--log-file`: Log file to write to (optional)
+
+3. Build the game with the proxy URL:
+   ```bash
+   python pygbag_build.py --proxy-url http://localhost:5000/api/openai
+   ```
+
+4. Test the proxy server:
+   ```bash
+   curl http://localhost:5000/api/test
+   ```
+   You should see a JSON response with status "ok".
+
+#### Option 2: Direct API Access (Browser Only)
+
+This approach is simpler but may encounter CORS issues in some browsers.
+
+1. Build the game normally:
+   ```bash
+   python pygbag_build.py
+   ```
+
+2. When playing the game in the browser, you'll see an API key input field where you can enter your OpenAI API key.
+   - The key is stored only in your browser's localStorage
+   - It's sent directly to OpenAI's API (may encounter CORS issues on some browsers)
+   - You can test your API key by clicking the "Test Key" button
+
+### Deploying to a Web Server
+
+#### Deploying the Game
+
+1. Upload the contents of the `build/web` directory to your web server.
+2. Make sure your server is configured to serve static files.
+3. For Apache, you might need a .htaccess file with:
+   ```
+   Options -MultiViews
+   RewriteEngine On
+   <Files ~ "\.(wasm|data)$">
+     Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+   </Files>
+   ```
+
+#### Deploying the Proxy Server
+
+If you're using the proxy server approach, you'll need to deploy the proxy server as well:
+
+1. **Using a standalone server**:
+   ```bash
+   python proxy_server.py --port 5000 --host 0.0.0.0 --log-file /var/log/openai_proxy.log
+   ```
+   
+   Consider using a process manager like Supervisor or systemd to keep it running.
+
+2. **Using a WSGI server (recommended for production)**:
+   
+   Create a WSGI file (e.g., `wsgi.py`):
+   ```python
+   import os
+   from proxy_server import app
+   
+   # Set your API key in the environment
+   os.environ["OPENAI_API_KEY"] = "your-api-key-here"
+   
+   if __name__ == "__main__":
+       app.run()
+   ```
+   
+   Then run with Gunicorn:
+   ```bash
+   gunicorn -w 4 -b 0.0.0.0:5000 wsgi:app
+   ```
+
+3. **Using a reverse proxy**:
+   
+   Configure Nginx to proxy requests to your Flask app:
+   ```
+   location /api/ {
+       proxy_pass http://localhost:5000;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+   }
+   ```
+
+4. When building the game, use the public URL of your proxy server:
+   ```bash
+   python pygbag_build.py --proxy-url https://your-domain.com/api/openai
+   ```
+
+### Security Considerations
+
+1. **API Key Protection**: 
+   - When using the proxy server, store your API key securely on the server
+   - Consider using environment variables or a secrets manager
+   - Never hardcode API keys in your source code
+
+2. **Rate Limiting**:
+   - The proxy server includes basic rate limiting to prevent abuse
+   - Adjust `MAX_REQUESTS_PER_MINUTE` in proxy_server.py based on your OpenAI plan
+
+3. **HTTPS**:
+   - Always use HTTPS for your proxy server in production
+   - Let's Encrypt provides free SSL certificates
+
+### Web Version Limitations
+
+The web version has some limitations compared to the desktop version:
+
+1. Performance may vary depending on the browser and device
+2. Some browsers may block direct API calls due to CORS restrictions (use the proxy server to avoid this)
+3. Local file access is restricted
+
+### Troubleshooting
+
+- If you encounter issues with the build, make sure you have the latest version of Pygbag installed.
+- If OpenAI API calls fail, check the browser console for CORS errors and consider using the proxy server.
+- Some browsers may require enabling WebAssembly support.
+- If the proxy server doesn't work, make sure it's running and accessible from the browser.
+- Check the proxy server logs for detailed error information.

@@ -193,13 +193,20 @@ class Player:
                         print(f"Error loading cloud image: {e}")
                         exit()
 
-            # Position the cloud at the player's feet
-            cloud_x = screen_x - self.width - 60  # Center cloud horizontally
+            # Position the cloud based on player direction
+            if self.direction == 'right':
+                cloud_x = screen_x - self.width - 60
+                cloud_image = self.cloud_image
+            else:
+                # Flip the cloud image when facing left
+                cloud_x = screen_x + self.width - 85
+                cloud_image = pygame.transform.flip(self.cloud_image, True, False)  # Flip horizontally
+                
             cloud_y = self.y + self.height - 38
             
             # Draw the cloud with slight bobbing motion
             bob_offset = math.sin(pygame.time.get_ticks() * 0.005) * 2  # Gentle bobbing motion
-            screen.blit(self.cloud_image, (cloud_x, cloud_y + bob_offset))
+            screen.blit(cloud_image, (cloud_x, cloud_y + bob_offset))
         
         # Draw dust effects if needed and not dying
         if not self.dying:
