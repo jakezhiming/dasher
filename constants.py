@@ -68,8 +68,6 @@ HEART_SPRITE_SIZE = 32
 MESSAGE_CHAR_DELAY = 5            # ms between characters in scrolling text
 DEFAULT_MESSAGE_DELAY = 5000      # ms between default messages
 WELCOME_MESSAGE = "Welcome to Dasher! Use arrow keys to move and SPACE to jump."
-CONTROLS_MESSAGE = "Press 'D' to toggle debug info."
-CONTROLS_MESSAGE_DELAY = 3000     # ms delay before showing controls message
 
 # ===== ANIMATION CONSTANTS =====
 PLAYER_ANIMATION_SPEED = 0.2      # Frames per second

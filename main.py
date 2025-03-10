@@ -6,7 +6,7 @@ from constants import (
     WIDTH, HEIGHT, PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT,
     GAME_RUNNING, GAME_LOST_MESSAGE, GAME_OVER, GAME_OVER_DISPLAY_DURATION,
     BLUE, BLACK, RED, SEGMENT_LENGTH_MULTIPLIER, WELCOME_MESSAGE,
-    CONTROLS_MESSAGE, CONTROLS_MESSAGE_DELAY, PLAYER_INITIAL_X, PLAYER_INITIAL_Y
+    PLAYER_INITIAL_X, PLAYER_INITIAL_Y
 )
 from utils import render_retro_text, draw_background
 from player import Player
@@ -46,9 +46,6 @@ player_has_moved = False
 
 # Set initial messages
 message_manager.set_message(WELCOME_MESSAGE)
-# Add a message about the hitbox toggle after a delay
-pygame.time.set_timer(pygame.USEREVENT, CONTROLS_MESSAGE_DELAY)
-show_controls_message = True
 
 # Main loop
 running = True
@@ -64,9 +61,6 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.USEREVENT and show_controls_message:
-            message_manager.set_message(CONTROLS_MESSAGE)
-            show_controls_message = False
 
     if game_state == GAME_RUNNING:
         # Game logic

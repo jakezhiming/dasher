@@ -194,16 +194,12 @@ def get_status_message(player):
     if player.lives == 1 and not message_manager.has_shown_message("last_life"):
         message_manager.set_message("You're on your last life! Be careful!")
         message_manager.mark_message_shown("last_life")
-    elif player.lives > 0 and player.invincible and player.invincible_from_damage:
-        message_manager.set_message("Ouch! You're temporarily invincible after taking damage.")
     elif player.invincible and not player.invincible_from_damage:
         message_manager.set_message("You're invincible! Nothing can hurt you now!")
     elif player.flying:
         message_manager.set_message("You can fly now! Press SPACE to soar through the sky!")
     elif player.speed_boost:
         message_manager.set_message("Super speed activated! Zoom zoom!")
-    elif player.immobilized:
-        message_manager.set_message("You're stuck! Wait to regain movement.")
     # Only show default messages if it's been a while since the last one
     elif message_manager.can_show_default_message():
         message_manager.set_message(default_messages[message_manager.default_message_index])

@@ -614,6 +614,13 @@ class Player:
                 self.invincible = False
             elif not self.invincible_from_damage and current_time - self.invincible_timer > INVINCIBILITY_DURATION:
                 self.invincible = False
+                
+            # Update flashing effect when invincible from damage
+            if self.invincible_from_damage:
+                # Flash every 100ms (10 times per second)
+                if current_time - self.invincible_flash_timer > 100:
+                    self.invincible_flash = not self.invincible_flash
+                    self.invincible_flash_timer = current_time
 
         # Update score based on distance and coins
         distance_score = int(self.x / 10)
@@ -660,8 +667,11 @@ class Player:
         self.invincible_timer = pygame.time.get_ticks()
         self.invincible_from_damage = from_damage
         
-        # Reset the hurt animation timer when taking damage
+        # Initialize flashing effect when taking damage
         if from_damage:
+            self.invincible_flash = True
+            self.invincible_flash_timer = pygame.time.get_ticks()
+            # Reset the hurt animation timer when taking damage
             self.hurt_animation_timer = pygame.time.get_ticks()
             # Reset animation frame to start the hurt animation from the beginning
             self.animation_frame = 0
