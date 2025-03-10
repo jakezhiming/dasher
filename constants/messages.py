@@ -37,6 +37,10 @@ PERSONALITIES = [
     "tech support",
     "royal monarch",
     "circus ringmaster",
-    "dad joke teller",
+    "pun master",
     "mountain climber",
+    "nerd",
+    "hipster",
+    "emo",
+    "memelord",
 ]

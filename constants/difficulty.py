@@ -12,4 +12,4 @@ MAX_PIT_WIDTH = 500               # Maximum pit width at highest difficulty
 BASE_POWERUP_CHANCE = 0.05        # Base chance of power-ups at lowest difficulty 
 MAX_SPIKES = 5
 MAX_FIRES = 5
-MAX_SAW_SIZE = 100
+MAX_SAW_SIZE = 120

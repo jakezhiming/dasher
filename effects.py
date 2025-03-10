@@ -1,7 +1,7 @@
 import pygame
 import math
 import random
-from constants.colors import BLUE, MAGENTA, CYAN, GOLD, RED
+from constants.colors import BLUE, MAGENTA, CYAN, GOLD, RED, WHITE
 
 class CollectionEffect:
     """Base class for collection effects when player collects items"""
@@ -261,7 +261,7 @@ class CollectionEffectManager:
     
     def create_powerup_effect(self, x, y, powerup_type):
         """Create effects for powerup collection"""
-        color = self.powerup_colors.get(powerup_type, (255, 255, 255))
+        color = self.powerup_colors.get(powerup_type, WHITE)
         
         # Particle explosion with reduced lifetime and range
         self.effects.append(ParticleEffect(
