@@ -2,9 +2,6 @@
 Dotenv compatibility layer for handling dotenv imports in both desktop and web environments.
 """
 
-import os
-from pygame_compat import is_web_environment
-
 # Define a fallback load_dotenv function in case the real one isn't available
 def fallback_load_dotenv(dotenv_path=None, stream=None, verbose=False, override=False):
     """

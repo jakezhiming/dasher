@@ -96,10 +96,6 @@ async def main():
     frame_count = 0
     last_time = pygame.time.get_ticks()
     
-    # Web-specific optimizations
-    IS_WEB_ENVIRONMENT = is_web_environment()
-    web_skip_frames = 0  # For frame skipping in web environment
-    
     try:
         while running:
             # This is needed for Pygbag to work properly - moved to the beginning of the loop
@@ -111,10 +107,6 @@ async def main():
             last_time = current_time
             
             frame_count += 1
-            
-            # Web optimization: Skip some frames for non-essential updates
-            if IS_WEB_ENVIRONMENT:
-                web_skip_frames = (web_skip_frames + 1) % 3  # Skip every 3rd frame for certain operations
             
             # Handle events
             for event in pygame.event.get():
@@ -170,19 +162,17 @@ async def main():
                 
                 camera_x = input_handler.update_scroll(player, camera_x)
                 
-                # Web optimization: Only update animations on non-skipped frames
-                if not IS_WEB_ENVIRONMENT or web_skip_frames != 1:
-                    # Update animations for coins and power-ups
-                    for coin in coins:
-                        coin.update(dt)
-                    for power_up in power_ups:
-                        power_up.update(dt)
-                    # Update animations for obstacles
-                    for obstacle in obstacles:
-                        obstacle.update(dt)
-                    
-                    # Update collection effects
-                    effect_manager.update(dt)
+                # Update animations for coins and power-ups
+                for coin in coins:
+                    coin.update(dt)
+                for power_up in power_ups:
+                    power_up.update(dt)
+                # Update animations for obstacles
+                for obstacle in obstacles:
+                    obstacle.update(dt)
+                
+                # Update collection effects
+                effect_manager.update(dt)
                 
                 if camera_x + WIDTH > rightmost_floor_end - 600:
                     old_rightmost = rightmost_floor_end
@@ -194,8 +184,7 @@ async def main():
                 # Draw background
                 draw_background(screen, camera_x)
                 
-                # Web optimization: Batch similar objects together to reduce draw calls
-                # and only draw objects that are visible on screen
+                # Batch similar objects together to reduce draw calls
                 visible_range = (camera_x - 100, camera_x + WIDTH + 100)
                 
                 for floor in floors:
@@ -244,31 +233,21 @@ async def main():
                 # Continue drawing the game state - reuse the same drawing code
                 draw_background(screen, camera_x)
                 
-                # In web environment, simplify the game over screen to improve performance
-                if IS_WEB_ENVIRONMENT:
-                    # Draw only essential elements
-                    for floor in floors:
-                        if floor.x + floor.width >= visible_range[0] and floor.x <= visible_range[1]:
-                            floor.draw(screen, camera_x)
-                    
-                    player.draw(screen, camera_x)
-                else:
-                    # Full rendering for desktop
-                    for floor in floors:
-                        if floor.x + floor.width >= visible_range[0] and floor.x <= visible_range[1]:
-                            floor.draw(screen, camera_x)
-                    
-                    for platform in platforms:
-                        if platform.x + platform.width >= visible_range[0] and platform.x <= visible_range[1]:
-                            platform.draw(screen, camera_x)
-                    
-                    for obstacle in obstacles:
-                        if obstacle.x + obstacle.width >= visible_range[0] and obstacle.x <= visible_range[1]:
-                            obstacle.draw(screen, camera_x)
-                    
-                    for coin in coins:
-                        if coin.x + coin.width >= visible_range[0] and coin.x <= visible_range[1]:
-                            coin.draw(screen, camera_x)
+                for floor in floors:
+                    if floor.x + floor.width >= visible_range[0] and floor.x <= visible_range[1]:
+                        floor.draw(screen, camera_x)
+                
+                for platform in platforms:
+                    if platform.x + platform.width >= visible_range[0] and platform.x <= visible_range[1]:
+                        platform.draw(screen, camera_x)
+                
+                for obstacle in obstacles:
+                    if obstacle.x + obstacle.width >= visible_range[0] and obstacle.x <= visible_range[1]:
+                        obstacle.draw(screen, camera_x)
+                
+                for coin in coins:
+                    if coin.x + coin.width >= visible_range[0] and coin.x <= visible_range[1]:
+                        coin.draw(screen, camera_x)
                 
                 for power_up in power_ups:
                     if power_up.x + power_up.width >= visible_range[0] and power_up.x <= visible_range[1]:
@@ -333,35 +312,12 @@ try:
     asyncio.run(main())
 except Exception as e:
     logger.error(f"Failed to start game: {str(e)}")
-    # In web version, we want to keep trying
-    if IS_WEB:
-        # Fallback to a simpler loop for web
-        async def simple_main():
-            screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-            pygame.display.set_caption("Dasher (Fallback Mode)")
-            clock = pygame.time.Clock()
-            
-            running = True
-            while running:
-                await asyncio.sleep(0)
-                
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        running = False
-                
-                screen.fill((0, 0, 0))  # Black background
-                
-                # Display error message
-                font = pygame.font.SysFont(None, 36)
-                error_text = font.render("Game failed to start properly", True, (255, 0, 0))
-                error_rect = error_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
-                screen.blit(error_text, error_rect)
-                
-                retry_text = font.render("Please refresh the page to try again", True, (255, 255, 255))
-                retry_rect = retry_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
-                screen.blit(retry_text, retry_rect)
-                
-                pygame.display.flip()
-                clock.tick(30)
-        
-        asyncio.run(simple_main())
+    if not IS_WEB:
+        exit()
+    else:
+        # In web version, stop the game loop but don't exit
+        try:
+            import js
+            js.stop_game()
+        except ImportError:
+            pass

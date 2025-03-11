@@ -4,7 +4,6 @@ import threading
 from constants.ui import MESSAGE_CHAR_DELAY, DEFAULT_MESSAGE_DELAY
 from llm_message_handler import LLMMessageHandler
 from logger import get_module_logger
-import random
 
 logger = get_module_logger('messages')
 
@@ -153,28 +152,12 @@ class StatusMessageManager:
         """Update the message display."""
         current_time = pygame.time.get_ticks()
         
-        # Web optimization: Skip message updates in web environment on some frames
-        if is_web_environment():
-            # Only update messages every few frames to reduce CPU usage
-            if hasattr(self, 'web_frame_skip'):
-                self.web_frame_skip = (self.web_frame_skip + 1) % 3
-                if self.web_frame_skip != 0:
-                    return
-            else:
-                self.web_frame_skip = 0
-        
         # If we have a target message, animate it character by character
         if self.target_message:
             if self.display_index < len(self.target_message):
                 # Check if it's time to display the next character
                 if current_time - self.last_char_time > self.char_delay:
-                    # Web optimization: Display characters faster in web environment
-                    if is_web_environment():
-                        # Display multiple characters at once in web environment
-                        chars_to_add = min(3, len(self.target_message) - self.display_index)
-                        self.display_index += chars_to_add
-                    else:
-                        self.display_index += 1
+                    self.display_index += 1
                     
                     self.current_message = self.target_message[:self.display_index]
                     self.last_char_time = current_time
@@ -192,9 +175,7 @@ class StatusMessageManager:
         # If we don't have a target message and there's nothing in the queue,
         # check if it's time to show a default message
         elif not self.message_queue and self.can_show_default_message():
-            # Web optimization: Show fewer default messages in web environment
-            if not is_web_environment() or random.random() < 0.5:
-                self.show_default_message()
+            self.show_default_message()
     
     def can_show_default_message(self):
         """Check if enough time has passed to show a new default message."""

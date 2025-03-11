@@ -3,7 +3,6 @@ Pygame compatibility layer for handling different pygame versions.
 This module provides a unified interface for both pygame and pygame_ce.
 """
 
-import sys
 import os
 
 # Check if we're running in a web environment (Pygbag)
