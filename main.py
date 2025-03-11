@@ -1,6 +1,6 @@
-from pygame_compat import pygame
+from compat import pygame
 import asyncio
-from dotenv_compat import load_dotenv
+from compat import load_dotenv
 
 load_dotenv()
 

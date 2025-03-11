@@ -6,7 +6,6 @@ from logger import get_module_logger
 
 logger = get_module_logger('llm_message_handler')
 
-
 # Try to import OpenAI for desktop version
 try:
     from openai import AsyncOpenAI
@@ -15,47 +14,48 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
 
-# Try to import js module for web version
+# Try to detect web environment
 try:
-    import js
-    import pyodide
-    from pyodide.http import pyfetch
+    from js import window
     IS_WEB = True
-    logger.debug("Using web OpenAI")
-except ImportError:
+    logger.info("Web environment detected via js.window")
+except ImportError as e:
     IS_WEB = False
 
 from constants.messages import PERSONALITIES
 
-# Default proxy URL - can be overridden with environment variable
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 PROXY_URL = os.getenv("OPENAI_PROXY_URL", "")
 
 class LLMMessageHandler:
     def __init__(self):
         # Initialize OpenAI client
         self.client = None
-        self.api_key = os.getenv("OPENAI_API_KEY", "")
+        self.api_key = OPENAI_API_KEY
         self.proxy_url = PROXY_URL
-        
+
         # For web compatibility with Pygbag
         if not OPENAI_AVAILABLE and not IS_WEB:
-            logger.error("OpenAI module not available and not running in web - LLM features disabled")
+            logger.error("Not detected to be running in desktop or web mode - LLM features disabled")
         elif IS_WEB:
-            logger.info(f"Running in web mode - will use proxy server at {self.proxy_url}")
-            # In web mode, we'll use the proxy server
-            if not self.proxy_url:
-                logger.warning("Neither API key nor proxy URL available")
-                logger.warning("Game will use original messages without AI rephrasing")
+            if self.proxy_url:
+                logger.info(f"Running in web mode - Use proxy server at {self.proxy_url}")
+            else:
+                logger.warning("No proxy URL configured - LLM features disabled")
         else:
             # Desktop mode with OpenAI Python SDK
-            self.client = AsyncOpenAI(api_key=self.api_key)
+            if self.api_key:
+                self.client = AsyncOpenAI(api_key=self.api_key)
+                logger.info("Running in desktop mode - OpenAI client initialized")
+            else:
+                logger.warning("No OpenAI API key provided - LLM features disabled")
         
         # Choose a random personality at startup
         if self.is_available():
             self.personality = random.choice(PERSONALITIES)
-            logger.info(f"Starting with personality: {self.personality}")
         else:
             self.personality = None
+        logger.info(f"Starting with personality: {self.personality}")
         
         # For storing the streaming response
         self.current_message = ""
@@ -161,8 +161,13 @@ Do not use any emojis or special characters.
             self.is_streaming = False
     
     async def _fetch_openai_web(self, prompt, timeout=5):
-        """Use Pyodide's js fetch to call OpenAI API in web environment"""
+        """Use JavaScript's fetch to call OpenAI API in web environment"""
         try:
+            # Check if proxy URL is configured
+            if not self.proxy_url:
+                logger.error("No proxy URL configured for web API calls")
+                return prompt
+            
             # Prepare the request payload
             payload = {
                 "model": "gpt-4o-mini",
@@ -171,54 +176,80 @@ Do not use any emojis or special characters.
                 "temperature": 0.5
             }
             
-            # Use the proxy server
+            # Use the proxy server URL
             url = self.proxy_url
-            headers = {"Content-Type": "application/json"}
             
-            # Make the fetch request using pyfetch with timeout
-            response = await pyfetch(
-                url,
-                method="POST",
-                headers=headers,
-                body=json.dumps(payload)
-            )
-            
-            if response.status == 200:
-                # Add timeout to the JSON parsing operation
-                response_json = await asyncio.wait_for(response.json(), timeout)
-                # Handle both direct OpenAI response and our proxy response format
-                if "choices" in response_json:
-                    if "message" in response_json["choices"][0]:
-                        message = response_json["choices"][0]["message"]["content"].strip()
-                    else:
-                        # Handle streaming response format
-                        message = response_json["choices"][0]["text"].strip()
-                else:
-                    # Unexpected response format
-                    logger.error(f"Unexpected API response format: {response_json}")
+            # Set up the request parameters for JavaScript
+            try:
+                # Convert the payload to a JSON string
+                payload_json = json.dumps(payload)
+                
+                # Call the JavaScript function to make the API request
+                # This assumes you have a JavaScript function called fetchLLMResponse
+                # that takes the URL, payload, and handles the API call
+                window.fetchLLMResponse(url, payload_json)
+                
+                # Wait for the response from JavaScript
+                llm_response = None
+                for _ in range(50):  # Poll for up to 5 seconds (50 * 0.1)
+                    await asyncio.sleep(0.1)
+                    if hasattr(window, 'llmResponse'):
+                        llm_response = window.llmResponse
+                        # Clear it after use
+                        del window.llmResponse
+                        break
+                
+                if llm_response is None:
+                    logger.error("No response received from JavaScript after timeout")
                     return prompt
                 
-                # Remove quotes if present
-                if message.startswith('"') and message.endswith('"'):
-                    message = message[1:-1].strip()
+                logger.info(f"Received response from JavaScript: {llm_response[:50]}...")
                 
-                self.current_message = message
-                return message
-            else:
-                # Add timeout to the error text retrieval
-                error_text = await asyncio.wait_for(response.text(), timeout)
-                logger.error(f"API error: {response.status}")
-                logger.error(f"Error details: {error_text}")
-                self.proxy_url = ""
+                # Process the response
+                try:
+                    # Check if the response is already a string or needs parsing
+                    if isinstance(llm_response, str):
+                        # Try to parse it as JSON if it looks like JSON
+                        if llm_response.startswith('{') and llm_response.endswith('}'):
+                            try:
+                                response_json = json.loads(llm_response)
+                                # Extract the message from the JSON response
+                                if "choices" in response_json:
+                                    if "message" in response_json["choices"][0]:
+                                        message = response_json["choices"][0]["message"]["content"].strip()
+                                    else:
+                                        # Handle streaming response format
+                                        message = response_json["choices"][0]["text"].strip()
+                                else:
+                                    # If it's not in the expected format, use the raw response
+                                    message = llm_response
+                            except json.JSONDecodeError:
+                                # If it's not valid JSON, use the raw response
+                                message = llm_response
+                        else:
+                            # If it doesn't look like JSON, use the raw response
+                            message = llm_response
+                    else:
+                        # If it's not a string, convert it to one
+                        message = str(llm_response)
+                    
+                    # Remove quotes if present
+                    if message.startswith('"') and message.endswith('"'):
+                        message = message[1:-1].strip()
+                    
+                    self.current_message = message
+                    logger.info(f"Successfully processed web API response: '{message}'")
+                    return message
+                except Exception as e:
+                    logger.error(f"Error processing JavaScript response: {e}")
+                    return prompt
+                
+            except Exception as e:
+                logger.error(f"Error calling JavaScript function: {e}")
                 return prompt
-                
-        except asyncio.TimeoutError:
-            logger.error("Timeout occurred during web API operations")
-            self.proxy_url = ""
-            return prompt
+            
         except Exception as e:
             logger.error(f"Error in web API call: {e}")
-            self.proxy_url = ""
             return prompt
     
     def get_current_personality(self):

@@ -1,4 +1,4 @@
-from pygame_compat import pygame
+from compat import pygame
 import random
 from constants.player import (
     PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_INITIAL_X, PLAYER_INITIAL_Y,

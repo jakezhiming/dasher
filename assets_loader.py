@@ -1,4 +1,4 @@
-from pygame_compat import pygame, is_web_environment
+from compat import pygame, is_web_environment
 from constants.player import PLAYER_WIDTH, PLAYER_HEIGHT
 from constants.paths import (
     FONT_PATH, HEART_SPRITE_PATH, 

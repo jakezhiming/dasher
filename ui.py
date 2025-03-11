@@ -1,4 +1,4 @@
-from pygame_compat import pygame
+from compat import pygame
 import math
 from constants.colors import BLUE, CYAN, MAGENTA, RED, WHITE, WHITE_OVERLAY, BLACK, GRAY, DARK_GREY
 from constants.screen import PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH
