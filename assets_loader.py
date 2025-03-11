@@ -14,6 +14,9 @@ from constants.paths import (
 )
 from constants.game_objects import COIN_SIZE, POWERUP_SIZE
 from constants.screen import PLAY_AREA_HEIGHT
+from logger import get_module_logger
+
+logger = get_module_logger('assets_loader')
 
 # ===== FONT CACHE =====
 font_cache = {}
@@ -87,7 +90,7 @@ PLAYER_SPRITE_HEIGHT = PLAYER_HEIGHT
 
 def load_all_assets():
     """Load all game assets."""
-    print("Loading all game assets...")
+    logger.info("Loading all game assets...")
     try:
         load_fonts()
         load_player_sprites()
@@ -95,10 +98,10 @@ def load_all_assets():
         load_cloud_image()
         load_game_object_textures()
         load_ui_assets()
-        print("All assets loaded successfully!")
+        logger.info("All assets loaded successfully!")
     except SystemExit:
         # This will be triggered when one of the asset loading functions calls exit()
-        print("Asset loading failed. Exiting game.")
+        logger.error("Asset loading failed. Exiting game.")
         exit()
 
 def load_fonts():
@@ -107,7 +110,7 @@ def load_fonts():
         # Load the default font size (we'll cache other sizes as needed)
         get_font(16)
     except Exception as e:
-        print(f"Error loading fonts: {e}")
+        logger.error(f"Error loading fonts: {e}")
         exit()
 
 def get_font(size):
@@ -120,7 +123,7 @@ def get_font(size):
     try:
         font = pygame.font.Font(FONT_PATH, size)
     except Exception as e:
-        print(f"Error: Could not load font {FONT_PATH}: {e}")
+        logger.error(f"Error: Could not load font {FONT_PATH}: {e}")
         exit()
     
     # Cache the font for future use
@@ -166,10 +169,10 @@ def load_background_assets():
                 background_layers.append(scaled_layer)
                 background_widths.append(new_width)
             except Exception as e:
-                print(f"Error loading background layer {path}: {e}")
+                logger.error(f"Error loading background layer {path}: {e}")
                 exit()
     except Exception as e:
-        print(f"Error loading background assets: {e}")
+        logger.error(f"Error loading background assets: {e}")
         exit()
 
 def load_player_sprites():
@@ -199,7 +202,7 @@ def load_player_sprites():
         try:
             player_sprites[action] = pygame.image.load(path).convert_alpha()
         except pygame.error as e:
-            print(f"Error loading sprite sheet {path}: {e}")
+            logger.error(f"Error loading sprite sheet {path}: {e}")
             exit()
     
     # Extract frames from sprite sheets
@@ -349,7 +352,7 @@ def load_cloud_image():
     try:
         cloud_image = pygame.image.load(CLOUD_LONELY_PATH).convert_alpha()
     except Exception as e:
-        print(f"Error loading cloud image: {e}")
+        logger.error(f"Error loading cloud image: {e}")
         exit()
 
 def load_game_object_textures():
@@ -361,14 +364,14 @@ def load_game_object_textures():
         # Load ground texture
         ground_texture = pygame.image.load(GROUND_TEXTURE_PATH).convert()
     except Exception as e:
-        print(f"Error loading ground texture: {e}")
+        logger.error(f"Error loading ground texture: {e}")
         exit()
     
     try:
         # Load platform texture
         platform_texture = pygame.image.load(PLATFORM_TEXTURE_PATH).convert()
     except Exception as e:
-        print(f"Error loading platform texture: {e}")
+        logger.error(f"Error loading platform texture: {e}")
         exit()
     
     try:
@@ -378,7 +381,7 @@ def load_game_object_textures():
         if coin_sprite.get_width() != COIN_SIZE or coin_sprite.get_height() != COIN_SIZE:
             coin_sprite = pygame.transform.scale(coin_sprite, (COIN_SIZE, COIN_SIZE))
     except Exception as e:
-        print(f"Error loading coin sprite: {e}")
+        logger.error(f"Error loading coin sprite: {e}")
         exit()
     
     try:
@@ -397,17 +400,17 @@ def load_game_object_textures():
                 if powerup_sprites[p_type].get_width() != POWERUP_SIZE or powerup_sprites[p_type].get_height() != POWERUP_SIZE:
                     powerup_sprites[p_type] = pygame.transform.scale(powerup_sprites[p_type], (POWERUP_SIZE, POWERUP_SIZE))
             except Exception as e:
-                print(f"Error loading power-up sprite {path}: {e}")
+                logger.error(f"Error loading power-up sprite {path}: {e}")
                 exit()
     except Exception as e:
-        print(f"Error loading power-up sprites: {e}")
+        logger.error(f"Error loading power-up sprites: {e}")
         exit()
     
     try:
         # Load spikes
         obstacle_sprites['spikes'] = pygame.image.load(SPIKES_PATH).convert_alpha()
     except Exception as e:
-        print(f"Error loading spikes sprite: {e}")
+        logger.error(f"Error loading spikes sprite: {e}")
         exit()
     
     try:
@@ -431,7 +434,7 @@ def load_game_object_textures():
         # Store the first frame as the base sprite
         obstacle_sprites['fire'] = fire_animation_frames[0]
     except Exception as e:
-        print(f"Error loading fire sprite: {e}")
+        logger.error(f"Error loading fire sprite: {e}")
         exit()
     
     try:
@@ -455,7 +458,7 @@ def load_game_object_textures():
         # Store the first frame as the base sprite
         obstacle_sprites['saw'] = saw_animation_frames[0]
     except Exception as e:
-        print(f"Error loading saw sprite: {e}")
+        logger.error(f"Error loading saw sprite: {e}")
         exit()
     
     try:
@@ -466,10 +469,10 @@ def load_game_object_textures():
                 frame = pygame.image.load(path).convert_alpha()
                 bomb_animation_frames.append(frame)
             except Exception as e:
-                print(f"Error loading bomb frame {i}: {e}")
+                logger.error(f"Error loading bomb frame {i}: {e}")
                 exit()
     except Exception as e:
-        print(f"Error loading bomb frames: {e}")
+        logger.error(f"Error loading bomb frames: {e}")
         exit()
     
     try:
@@ -480,10 +483,10 @@ def load_game_object_textures():
                 frame = pygame.image.load(path).convert_alpha()
                 explosion_animation_frames.append(frame)
             except Exception as e:
-                print(f"Error loading explosion frame {i}: {e}")
+                logger.error(f"Error loading explosion frame {i}: {e}")
                 exit()
     except Exception as e:
-        print(f"Error loading explosion frames: {e}")
+        logger.error(f"Error loading explosion frames: {e}")
         exit()
 
 def load_ui_assets():
@@ -493,7 +496,7 @@ def load_ui_assets():
     try:
         heart_sprite = pygame.image.load(HEART_SPRITE_PATH).convert_alpha()
     except Exception as e:
-        print(f"Error loading heart sprite: {e}")
+        logger.error(f"Error loading heart sprite: {e}")
         exit()
 
 def get_cloud_image():

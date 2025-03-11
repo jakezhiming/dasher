@@ -29,6 +29,7 @@ The game features progressive difficulty - the further you go, the more challeng
   - And more!
 - **Difficulty Scaling**: The game gets progressively harder the further you go
 - **AI-Powered Messages**: Game messages are rephrased by an AI in different personalities (pirate, robot, wizard, etc.) using OpenAI's GPT-4o-mini model
+- **Comprehensive Logging System**: Detailed logging for debugging and monitoring game events
 
 ## AI Message System
 
@@ -43,6 +44,30 @@ To use the AI message system:
 3. Make sure you have the required dependencies installed (see Installation section)
 
 If no API key is provided, the game will fall back to using the original messages without AI rephrasing.
+
+## Logging System
+
+Dasher includes a comprehensive logging system that records game events, errors, and performance metrics. This is useful for debugging and monitoring game behavior.
+
+### Logging Configuration
+
+You can configure the logging system by setting the following variables in your `.env` file:
+
+```
+# Logging configuration
+# Available levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL=INFO
+LOG_TO_FILE=True
+LOG_TO_CONSOLE=True
+```
+
+- **LOG_LEVEL**: Sets the minimum level of messages to log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- **LOG_TO_FILE**: When set to True, logs are saved to files in the `logs` directory
+- **LOG_TO_CONSOLE**: When set to True, logs are displayed in the console
+
+### Log Files
+
+Log files are stored in the `logs` directory with timestamps in their filenames. The system uses rotating file handlers to limit file size and automatically creates new log files when needed.
 
 ## Requirements
 

@@ -2,11 +2,16 @@ import os
 import random
 import json
 import asyncio
+from logger import get_module_logger
+
+logger = get_module_logger('llm_message_handler')
+
 
 # Try to import OpenAI for desktop version
 try:
     from openai import AsyncOpenAI
     OPENAI_AVAILABLE = True
+    logger.debug("Using desktop OpenAI")
 except ImportError:
     OPENAI_AVAILABLE = False
 
@@ -16,6 +21,7 @@ try:
     import pyodide
     from pyodide.http import pyfetch
     IS_WEB = True
+    logger.debug("Using web OpenAI")
 except ImportError:
     IS_WEB = False
 
@@ -33,23 +39,24 @@ class LLMMessageHandler:
         
         # For web compatibility with Pygbag
         if not OPENAI_AVAILABLE and not IS_WEB:
-            print("OpenAI module not available and not running in web - LLM features disabled")
+            logger.info("OpenAI module not available and not running in web - LLM features disabled")
         elif IS_WEB:
-            print(f"Running in web mode - will use proxy server at {self.proxy_url}")
+            logger.info(f"Running in web mode - will use proxy server at {self.proxy_url}")
             # In web mode, we'll use the proxy server
             if not self.api_key and not self.proxy_url:
-                print("Warning: Neither API key nor proxy URL available")
-                print("Game will use original messages without AI rephrasing")
+                logger.warning("Neither API key nor proxy URL available")
+                logger.warning("Game will use original messages without AI rephrasing")
         else:
             # Desktop mode with OpenAI Python SDK
             if not self.api_key:
-                print("Warning: OPENAI_API_KEY not found in environment variables")
-                print("Game will use original messages without AI rephrasing")
+                logger.warning("OPENAI_API_KEY not found in environment variables")
+                logger.warning("Game will use original messages without AI rephrasing")
             else:
                 self.client = AsyncOpenAI(api_key=self.api_key)
         
         # Choose a random personality at startup
         self.personality = random.choice(PERSONALITIES)
+        logger.info(f"Starting with personality: {self.personality}")
         
         # For storing the streaming response
         self.current_message = ""
@@ -79,7 +86,7 @@ class LLMMessageHandler:
                 try:
                     return await asyncio.wait_for(self._fetch_openai_web(prompt), timeout)
                 except asyncio.TimeoutError:
-                    print(f"API call timed out after {timeout} seconds")
+                    logger.error(f"API call timed out after {timeout} seconds")
                     return original_message
             else:
                 # Use OpenAI Python SDK for desktop version
@@ -109,12 +116,12 @@ class LLMMessageHandler:
                     self.current_message = complete_message
                     return complete_message
                 except asyncio.TimeoutError:
-                    print(f"API call timed out after {timeout} seconds. Switch to default messages.")
+                    logger.error(f"API call timed out after {timeout} seconds. Switch to default messages.")
                     self.client = None
                     return original_message
             
         except Exception as e:
-            print(f"Error in LLM API call: {e}. Switch to default messages.")
+            logger.error(f"Error in LLM API call: {e}. Switch to default messages.")
             self.client = None
             return original_message
         finally:
@@ -164,7 +171,7 @@ class LLMMessageHandler:
                         message = response_json["choices"][0]["text"].strip()
                 else:
                     # Unexpected response format
-                    print(f"Unexpected API response format: {response_json}")
+                    logger.error(f"Unexpected API response format: {response_json}")
                     return prompt
                 
                 # Remove quotes if present
@@ -176,17 +183,17 @@ class LLMMessageHandler:
             else:
                 # Add timeout to the error text retrieval
                 error_text = await asyncio.wait_for(response.text(), timeout)
-                print(f"API error: {response.status}")
-                print(f"Error details: {error_text}")
+                logger.error(f"API error: {response.status}")
+                logger.error(f"Error details: {error_text}")
                 self.client = None
                 return prompt
                 
         except asyncio.TimeoutError:
-            print("Timeout occurred during web API operations")
+            logger.error("Timeout occurred during web API operations")
             self.client = None
             return prompt
         except Exception as e:
-            print(f"Error in web API call: {e}")
+            logger.error(f"Error in web API call: {e}")
             self.client = None
             return prompt
     

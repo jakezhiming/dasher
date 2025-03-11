@@ -13,28 +13,35 @@ from constants.game_states import (
 from utils import render_retro_text, draw_background
 from player import Player
 from game_objects import Floor
-from ui import draw_ui, draw_debug_info, message_manager
+from ui import draw_ui, draw_debug_info
+from messages import message_manager
 import input_handler
 from level_generator import generate_new_segment, remove_old_objects
 from effects import effect_manager
+from logger import logger, log_game_start, log_game_over
 
 # Try to import web-specific UI components
 try:
     from web_ui import ApiKeyInput, is_web_environment, load_api_key_from_storage
     IS_WEB = is_web_environment()
+    logger.info("Web environment detected")
 except ImportError:
     IS_WEB = False
+    logger.info("Desktop environment detected")
 
 # Initialize Pygame
 pygame.init()
+logger.info("Pygame initialized")
 
 # Screen setup
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Dasher")
 clock = pygame.time.Clock()
+logger.info(f"Screen setup complete: {WIDTH}x{HEIGHT}")
 
 # Load game assets
 load_all_assets()  # Load all game assets using the asset_loader
+logger.info("Game assets loaded")
 
 # Load API key from localStorage if in web environment
 api_key_input = None
@@ -42,6 +49,7 @@ if IS_WEB:
     load_api_key_from_storage()
     # Create API key input field
     api_key_input = ApiKeyInput(50, 50, 400, 30)
+    logger.info("API key input field created")
 
 async def main():
     # Initialize game
@@ -58,6 +66,9 @@ async def main():
     game_state = GAME_RUNNING
     game_over_timer = 0
     player_has_moved = False
+    
+    # Log game start
+    log_game_start()
     
     # Web-specific settings
     show_api_key_input = IS_WEB and not message_manager.llm_handler.is_available()
@@ -79,9 +90,11 @@ async def main():
         # Handle events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                logger.info("Game quit requested")
                 running = False
             elif event.type == pygame.VIDEORESIZE:
                 # Handle window resize for web compatibility
+                logger.debug(f"Window resized to {event.w}x{event.h}")
                 pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
             
             # Handle API key input in web version
@@ -89,17 +102,23 @@ async def main():
                 if api_key_input.handle_event(event):
                     # If API key was saved, update the LLM handler
                     if api_key_input.saved:
+                        logger.info("API key saved")
                         message_manager.llm_handler.api_key = api_key_input.text
                         # Check if we should still show the input
                         show_api_key_input = not message_manager.llm_handler.is_available()
                     
                     # Check if we need to test the API key
                     if api_key_input.testing:
+                        logger.info("Testing API key")
                         pending_api_test = True
 
         # Handle pending API key test
         if pending_api_test and api_key_input:
-            await api_key_input._test_api_key()
+            try:
+                await api_key_input._test_api_key()
+                logger.info("API key test completed")
+            except Exception as e:
+                logger.error(f"API key test failed: {str(e)}")
             pending_api_test = False
 
         if game_state == GAME_RUNNING:
@@ -128,7 +147,9 @@ async def main():
             effect_manager.update(dt)
             
             if camera_x + WIDTH > rightmost_floor_end - 600:
+                old_rightmost = rightmost_floor_end
                 rightmost_floor_end = generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, camera_x, WIDTH)
+                logger.debug(f"Generated new segment from {old_rightmost} to {rightmost_floor_end}")
             
             floors, platforms, obstacles, coins, power_ups = remove_old_objects(player, floors, platforms, obstacles, coins, power_ups)
 
@@ -165,6 +186,7 @@ async def main():
             # Show game over message for a few seconds
             if pygame.time.get_ticks() - game_over_timer > GAME_OVER_DISPLAY_DURATION:
                 game_state = GAME_OVER
+                log_game_over(player.score)
             
             # Continue drawing the game state
             draw_background(screen, camera_x)
@@ -208,12 +230,16 @@ async def main():
             game_state = GAME_RUNNING
             player_has_moved = False
             
+            logger.info("Game reset after game over")
+            
             # Change to a new LLM personality
             try:
                 new_personality = message_manager.llm_handler.change_personality()
                 message_manager.set_message(f"Welcome back! I'm now speaking like a {new_personality}.")
+                logger.info(f"Changed LLM personality to {new_personality}")
             except Exception as e:
                 # Handle case where LLM is not available
+                logger.warning(f"Failed to change LLM personality: {str(e)}")
                 message_manager.set_message("Welcome back! Let's play again!")
 
         # Update the message manager
@@ -230,7 +256,10 @@ async def main():
         # This is needed for Pygbag to work properly
         await asyncio.sleep(0)
 
+    logger.info("Game loop ended")
     pygame.quit()
+    logger.info("Pygame quit")
 
 # This is the entry point for Pygbag
+logger.info("Starting game")
 asyncio.run(main())

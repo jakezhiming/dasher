@@ -2,6 +2,9 @@ import pygame
 from constants.player import BASE_MOVE_SPEED, SPEED_BOOST_MULTIPLIER, JUMP_VELOCITY, MAX_BACKTRACK_DISTANCE
 from constants.screen import WIDTH
 from constants.camera import CAMERA_RIGHT_BOUNDARY_FACTOR, CAMERA_LEFT_BOUNDARY_FACTOR
+from logger import get_module_logger
+
+logger = get_module_logger('input_handler')
 
 # Global variables for input state
 space_key_pressed = False

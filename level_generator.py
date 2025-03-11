@@ -15,6 +15,9 @@ from constants.level_generation import (
 from constants.game_objects import FLOOR_HEIGHT
 from constants.player import MAX_BACKTRACK_DISTANCE
 from game_objects import Floor, Platform, Obstacle, Coin, PowerUp
+from logger import get_module_logger
+
+logger = get_module_logger('level_generator')
 
 def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, camera_x, width):
     """Generate a new segment of the level with floors, platforms, obstacles, and collectibles."""

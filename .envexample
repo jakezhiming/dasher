@@ -2,4 +2,10 @@
 # You can get an API key from https://platform.openai.com/api-keys
 
 # OpenAI API key for LLM message rephrasing
-OPENAI_API_KEY=your_openai_api_key_here 
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Logging configuration
+# Available levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL=DEBUG
+LOG_TO_FILE=True
+LOG_TO_CONSOLE=True 

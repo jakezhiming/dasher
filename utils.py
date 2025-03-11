@@ -1,6 +1,9 @@
 import pygame
 from constants.paths import FONT_PATH
 from assets_loader import get_font, get_background_layers, get_background_widths
+from logger import get_module_logger
+
+logger = get_module_logger('utils')
 
 # Font cache to store loaded fonts by size
 _font_cache = {}
@@ -15,7 +18,8 @@ def get_cloud_image():
         try:
             _cloud_image = pygame.image.load('assets/images/background/cloud_lonely.png').convert_alpha()
         except Exception as e:
-            print(f"Warning: Could not load cloud_lonely.png: {e}")
+            logger.error(f"Could not load cloud_lonely.png: {e}")
+            exit()
     return _cloud_image
 
 def get_retro_font(size):
@@ -29,8 +33,8 @@ def get_retro_font(size):
         font = pygame.font.Font(FONT_PATH, size)
     except:
         # Fallback to default font if the retro font fails to load
-        print("Warning: Could not load retro font, using default font instead")
-        font = pygame.font.Font(None, size)
+        logger.error("Could not load retro font")
+        exit()
     
     # Store in cache for future use
     _font_cache[size] = font
@@ -109,7 +113,7 @@ def draw_background(screen, camera_x=0):
     background_widths = get_background_widths()
     
     if not background_layers or not background_widths:
-        print("Warning: No background layers or widths loaded")
+        logger.error("No background layers or widths loaded")
         exit()
     
     # Draw each layer with parallax effect

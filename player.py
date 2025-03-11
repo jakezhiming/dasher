@@ -14,6 +14,9 @@ from assets_loader import get_frame, player_frames, get_cloud_image
 import input_handler
 import math
 from effects import effect_manager
+from logger import get_module_logger
+
+logger = get_module_logger('player')
 
 class Player:
     def __init__(self, x=PLAYER_INITIAL_X, y=PLAYER_INITIAL_Y):
@@ -190,7 +193,7 @@ class Player:
                         cloud_height = self.height * 3
                         self.cloud_image = pygame.transform.scale(self.cloud_image, (cloud_width, cloud_height))
                     except Exception as e:
-                        print(f"Error loading cloud image: {e}")
+                        logger.error(f"Error loading cloud image: {e}")
                         exit()
 
             # Position the cloud based on player direction

@@ -6,7 +6,10 @@ from constants.game_objects import FLOOR_HEIGHT
 import math
 import random
 import input_handler
-import assets_loader 
+import assets_loader
+from logger import get_module_logger
+
+logger = get_module_logger('game_objects')
 
 # Global texture variables
 ground_texture = None

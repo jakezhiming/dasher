@@ -43,4 +43,5 @@ PERSONALITIES = [
     "hipster",
     "emo",
     "memelord",
+    "physics professor",
 ]

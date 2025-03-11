@@ -2,6 +2,9 @@ import pygame
 import math
 import random
 from constants.colors import BLUE, MAGENTA, CYAN, GOLD, RED, WHITE
+from logger import get_module_logger
+
+logger = get_module_logger('effects')
 
 class CollectionEffect:
     """Base class for collection effects when player collects items"""

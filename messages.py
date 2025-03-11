@@ -3,6 +3,9 @@ import asyncio
 import threading
 from constants.ui import MESSAGE_CHAR_DELAY, DEFAULT_MESSAGE_DELAY
 from llm_message_handler import LLMMessageHandler
+from logger import get_module_logger
+
+logger = get_module_logger('messages')
 
 class StatusMessageManager:
     def __init__(self):
@@ -84,7 +87,7 @@ class StatusMessageManager:
                 if not self.target_message:
                     self._load_next_message()
         except Exception as e:
-            print(f"Error processing LLM message: {e}")
+            logger.error(f"Error processing LLM message: {e}")
             # Fall back to original message
             if (original_message not in self.message_queue and
                 original_message != self.target_message and
@@ -106,7 +109,7 @@ class StatusMessageManager:
         
         # Get the next message from the queue
         next_message = self.message_queue.pop(0)
-        print(f"Status Message: {next_message}")
+        logger.debug(next_message)
 
         current_time = pygame.time.get_ticks()
         self.last_message_time = current_time
@@ -172,7 +175,7 @@ class StatusMessageManager:
         """Get the current LLM personality"""
         if self.llm_handler.is_available():
             return self.llm_handler.get_current_personality()
-        return "None (LLM not available)"
+        return "None"
 
 # Create a global instance of the message manager
 message_manager = StatusMessageManager()
