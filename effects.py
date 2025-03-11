@@ -1,4 +1,4 @@
-import pygame
+from pygame_compat import pygame
 import math
 import random
 from constants.colors import BLUE, MAGENTA, CYAN, GOLD, RED, WHITE

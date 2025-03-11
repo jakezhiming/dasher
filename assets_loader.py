@@ -1,4 +1,4 @@
-import pygame
+from pygame_compat import pygame, is_web_environment
 from constants.player import PLAYER_WIDTH, PLAYER_HEIGHT
 from constants.paths import (
     FONT_PATH, HEART_SPRITE_PATH, 
@@ -17,6 +17,9 @@ from constants.screen import PLAY_AREA_HEIGHT
 from logger import get_module_logger
 
 logger = get_module_logger('assets_loader')
+
+# Check if we're in web environment for optimizations
+IS_WEB = is_web_environment()
 
 # ===== FONT CACHE =====
 font_cache = {}
@@ -90,15 +93,31 @@ PLAYER_SPRITE_HEIGHT = PLAYER_HEIGHT
 
 def load_all_assets():
     """Load all game assets."""
-    logger.info("Loading all game assets...")
     try:
-        load_fonts()
-        load_player_sprites()
-        load_background_assets()
-        load_cloud_image()
-        load_game_object_textures()
-        load_ui_assets()
-        logger.info("All assets loaded successfully!")
+        # Web optimization: Load fewer assets in web environment
+        if IS_WEB:
+            logger.info("Loading assets for web environment (optimized)")
+            # Load essential assets first
+            load_fonts()
+            load_player_sprites()
+            load_ui_assets()
+            
+            # Load simplified background for web
+            load_simplified_background()
+            
+            # Load game objects with reduced quality for web
+            load_game_object_textures(web_optimized=True)
+            
+            logger.info("Web-optimized assets loaded successfully!")
+        else:
+            # Load all assets for desktop environment
+            load_player_sprites()
+            load_fonts()
+            load_background_assets()
+            load_cloud_image()
+            load_game_object_textures()
+            load_ui_assets()
+            logger.info("All assets loaded successfully!")
     except SystemExit:
         # This will be triggered when one of the asset loading functions calls exit()
         logger.error("Asset loading failed. Exiting game.")
@@ -355,21 +374,29 @@ def load_cloud_image():
         logger.error(f"Error loading cloud image: {e}")
         exit()
 
-def load_game_object_textures():
+def load_game_object_textures(web_optimized=False):
     """Load textures for game objects."""
     global ground_texture, platform_texture, coin_sprite, powerup_sprites, obstacle_sprites
     global fire_animation_frames, saw_animation_frames, bomb_animation_frames, explosion_animation_frames
     
+    # Initialize containers
+    powerup_sprites = {}
+    obstacle_sprites = {}
+    fire_animation_frames = []
+    saw_animation_frames = []
+    bomb_animation_frames = []
+    explosion_animation_frames = []
+    
     try:
         # Load ground texture
-        ground_texture = pygame.image.load(GROUND_TEXTURE_PATH).convert()
+        ground_texture = pygame.image.load(GROUND_TEXTURE_PATH).convert_alpha()
     except Exception as e:
         logger.error(f"Error loading ground texture: {e}")
         exit()
     
     try:
         # Load platform texture
-        platform_texture = pygame.image.load(PLATFORM_TEXTURE_PATH).convert()
+        platform_texture = pygame.image.load(PLATFORM_TEXTURE_PATH).convert_alpha()
     except Exception as e:
         logger.error(f"Error loading platform texture: {e}")
         exit()
@@ -377,117 +404,182 @@ def load_game_object_textures():
     try:
         # Load coin sprite
         coin_sprite = pygame.image.load(COIN_PATH).convert_alpha()
-        # Resize to match the game's dimensions if needed
+        # Resize to match the game's dimensions
         if coin_sprite.get_width() != COIN_SIZE or coin_sprite.get_height() != COIN_SIZE:
             coin_sprite = pygame.transform.scale(coin_sprite, (COIN_SIZE, COIN_SIZE))
     except Exception as e:
         logger.error(f"Error loading coin sprite: {e}")
         exit()
     
-    try:
-        # Load power-up sprites
-        powerup_paths = {
-            'speed': POWERUP_SPEED_PATH,
-            'flying': POWERUP_FLYING_PATH,
-            'invincibility': POWERUP_INVINCIBILITY_PATH,
-            'life': POWERUP_LIFE_PATH
-        }
+    # Web optimization: Load fewer animation frames for web
+    if web_optimized:
+        # Load power-ups with simplified approach
+        try:
+            # Only load essential power-ups for web
+            powerup_paths = {
+                'speed': POWERUP_SPEED_PATH,
+                'life': POWERUP_LIFE_PATH
+            }
+            
+            for p_type, path in powerup_paths.items():
+                try:
+                    powerup_sprites[p_type] = pygame.image.load(path).convert_alpha()
+                    # Resize to match the game's dimensions if needed
+                    if powerup_sprites[p_type].get_width() != POWERUP_SIZE or powerup_sprites[p_type].get_height() != POWERUP_SIZE:
+                        powerup_sprites[p_type] = pygame.transform.scale(powerup_sprites[p_type], (POWERUP_SIZE, POWERUP_SIZE))
+                except Exception as e:
+                    logger.error(f"Error loading power-up sprite {path}: {e}")
+                    exit()
+        except Exception as e:
+            logger.error(f"Error loading power-up sprites: {e}")
+            exit()
         
-        for p_type, path in powerup_paths.items():
-            try:
-                powerup_sprites[p_type] = pygame.image.load(path).convert_alpha()
-                # Resize to match the game's dimensions if needed
-                if powerup_sprites[p_type].get_width() != POWERUP_SIZE or powerup_sprites[p_type].get_height() != POWERUP_SIZE:
-                    powerup_sprites[p_type] = pygame.transform.scale(powerup_sprites[p_type], (POWERUP_SIZE, POWERUP_SIZE))
-            except Exception as e:
-                logger.error(f"Error loading power-up sprite {path}: {e}")
-                exit()
-    except Exception as e:
-        logger.error(f"Error loading power-up sprites: {e}")
-        exit()
-    
-    try:
-        # Load spikes
-        obstacle_sprites['spikes'] = pygame.image.load(SPIKES_PATH).convert_alpha()
-    except Exception as e:
-        logger.error(f"Error loading spikes sprite: {e}")
-        exit()
-    
-    try:
-        # Load fire animation frames (sprite sheet with 3 frames)
-        fire_sprite_sheet = pygame.image.load(FIRE_PATH).convert_alpha()
+        # Load simplified obstacle sprites
+        try:
+            # Load spikes
+            obstacle_sprites['spikes'] = pygame.image.load(SPIKES_PATH).convert_alpha()
+        except Exception as e:
+            logger.error(f"Error loading spikes sprite: {e}")
+            exit()
         
-        # Get the dimensions of the sprite sheet
-        sheet_width = fire_sprite_sheet.get_width()
-        sheet_height = fire_sprite_sheet.get_height()
-        
-        # Assuming the fire sprite sheet has 3 frames horizontally
-        frame_width = sheet_width // 3
-        
-        # Extract each frame from the sprite sheet
-        for i in range(3):
-            # Create a subsurface for each frame
-            frame_rect = pygame.Rect(i * frame_width, 0, frame_width, sheet_height)
-            frame = fire_sprite_sheet.subsurface(frame_rect)
+        # Load simplified fire animation (just one frame)
+        try:
+            fire_sprite = pygame.image.load(FIRE_PATH).convert_alpha()
+            sheet_width = fire_sprite.get_width()
+            frame_width = sheet_width // 3
+            sheet_height = fire_sprite.get_height()
+            
+            # Just extract the first frame
+            frame_rect = pygame.Rect(0, 0, frame_width, sheet_height)
+            frame = fire_sprite.subsurface(frame_rect)
             fire_animation_frames.append(frame)
+            
+            # Store the first frame as the base sprite
+            obstacle_sprites['fire'] = fire_animation_frames[0]
+        except Exception as e:
+            logger.error(f"Error loading fire sprite: {e}")
+            exit()
+    else:
+        # Load all power-ups and animations for desktop
+        try:
+            # Load power-up sprites
+            powerup_paths = {
+                'speed': POWERUP_SPEED_PATH,
+                'flying': POWERUP_FLYING_PATH,
+                'invincibility': POWERUP_INVINCIBILITY_PATH,
+                'life': POWERUP_LIFE_PATH
+            }
+            
+            for p_type, path in powerup_paths.items():
+                try:
+                    powerup_sprites[p_type] = pygame.image.load(path).convert_alpha()
+                    # Resize to match the game's dimensions if needed
+                    if powerup_sprites[p_type].get_width() != POWERUP_SIZE or powerup_sprites[p_type].get_height() != POWERUP_SIZE:
+                        powerup_sprites[p_type] = pygame.transform.scale(powerup_sprites[p_type], (POWERUP_SIZE, POWERUP_SIZE))
+                except Exception as e:
+                    logger.error(f"Error loading power-up sprite {path}: {e}")
+                    # Don't exit, just log the error and continue
+                    logger.warning(f"Continuing without power-up sprite {p_type}")
+        except Exception as e:
+            logger.error(f"Error loading power-up sprites: {e}")
+            # Don't exit, just log the error and continue
+            logger.warning("Continuing without power-up sprites")
         
-        # Store the first frame as the base sprite
-        obstacle_sprites['fire'] = fire_animation_frames[0]
-    except Exception as e:
-        logger.error(f"Error loading fire sprite: {e}")
-        exit()
-    
-    try:
-        # Load saw animation frames (sprite sheet with 8 frames)
-        saw_sprite_sheet = pygame.image.load(SAW_PATH).convert_alpha()
+        # Load spikes sprite
+        try:
+            obstacle_sprites['spikes'] = pygame.image.load(SPIKES_PATH).convert_alpha()
+        except Exception as e:
+            logger.error(f"Error loading spikes sprite: {e}")
+            # Don't exit, just log the error and continue
+            logger.warning("Continuing without spikes sprite")
         
-        # Get the dimensions of the sprite sheet
-        sheet_width = saw_sprite_sheet.get_width()
-        sheet_height = saw_sprite_sheet.get_height()
+        try:
+            # Load fire animation frames (sprite sheet with 3 frames)
+            fire_sprite_sheet = pygame.image.load(FIRE_PATH).convert_alpha()
+            
+            # Get the dimensions of the sprite sheet
+            sheet_width = fire_sprite_sheet.get_width()
+            sheet_height = fire_sprite_sheet.get_height()
+            
+            # Assuming the fire sprite sheet has 3 frames horizontally
+            frame_width = sheet_width // 3
+            
+            # Extract each frame from the sprite sheet
+            for i in range(3):
+                # Create a subsurface for each frame
+                frame_rect = pygame.Rect(i * frame_width, 0, frame_width, sheet_height)
+                frame = fire_sprite_sheet.subsurface(frame_rect)
+                fire_animation_frames.append(frame)
+            
+            # Store the first frame as the base sprite
+            if fire_animation_frames:
+                obstacle_sprites['fire'] = fire_animation_frames[0]
+        except Exception as e:
+            logger.error(f"Error loading fire sprite: {e}")
+            # Don't exit, just log the error and continue
+            logger.warning("Continuing without fire sprite")
         
-        # Assuming the saw sprite sheet has 8 frames horizontally
-        frame_width = sheet_width // 8
+        try:
+            # Load saw animation frames (sprite sheet with 8 frames)
+            saw_sprite_sheet = pygame.image.load(SAW_PATH).convert_alpha()
+            
+            # Get the dimensions of the sprite sheet
+            sheet_width = saw_sprite_sheet.get_width()
+            sheet_height = saw_sprite_sheet.get_height()
+            
+            # Assuming the saw sprite sheet has 8 frames horizontally
+            frame_width = sheet_width // 8
+            
+            # Extract each frame from the sprite sheet
+            for i in range(8):
+                # Create a subsurface for each frame
+                frame_rect = pygame.Rect(i * frame_width, 0, frame_width, sheet_height)
+                frame = saw_sprite_sheet.subsurface(frame_rect)
+                saw_animation_frames.append(frame)
+            
+            # Store the first frame as the base sprite
+            if saw_animation_frames:
+                obstacle_sprites['saw'] = saw_animation_frames[0]
+        except Exception as e:
+            logger.error(f"Error loading saw sprite: {e}")
+            # Don't exit, just log the error and continue
+            logger.warning("Continuing without saw sprite")
         
-        # Extract each frame from the sprite sheet
-        for i in range(8):
-            # Create a subsurface for each frame
-            frame_rect = pygame.Rect(i * frame_width, 0, frame_width, sheet_height)
-            frame = saw_sprite_sheet.subsurface(frame_rect)
-            saw_animation_frames.append(frame)
+        try:
+            # Load bomb animation frames
+            for i in range(1, 11):  # 10 frames
+                path = f"{BOMB_DIR_PATH}/{i}.png"
+                try:
+                    frame = pygame.image.load(path).convert_alpha()
+                    bomb_animation_frames.append(frame)
+                except Exception as e:
+                    logger.error(f"Error loading bomb frame {i}: {e}")
+                    # Don't exit, just log the error and continue
+                    logger.warning(f"Continuing without bomb frame {i}")
+            
+            # Store the first frame as the base sprite if available
+            if bomb_animation_frames:
+                obstacle_sprites['bomb'] = bomb_animation_frames[0]
+        except Exception as e:
+            logger.error(f"Error loading bomb frames: {e}")
+            # Don't exit, just log the error and continue
+            logger.warning("Continuing without bomb frames")
         
-        # Store the first frame as the base sprite
-        obstacle_sprites['saw'] = saw_animation_frames[0]
-    except Exception as e:
-        logger.error(f"Error loading saw sprite: {e}")
-        exit()
-    
-    try:
-        # Load bomb animation frames
-        for i in range(1, 11):  # 10 frames
-            path = f"{BOMB_DIR_PATH}/{i}.png"
-            try:
-                frame = pygame.image.load(path).convert_alpha()
-                bomb_animation_frames.append(frame)
-            except Exception as e:
-                logger.error(f"Error loading bomb frame {i}: {e}")
-                exit()
-    except Exception as e:
-        logger.error(f"Error loading bomb frames: {e}")
-        exit()
-    
-    try:
-        # Load explosion animation frames
-        for i in range(1, 10):  # 9 frames
-            path = f"{EXPLOSION_DIR_PATH}/{i}.png"
-            try:
-                frame = pygame.image.load(path).convert_alpha()
-                explosion_animation_frames.append(frame)
-            except Exception as e:
-                logger.error(f"Error loading explosion frame {i}: {e}")
-                exit()
-    except Exception as e:
-        logger.error(f"Error loading explosion frames: {e}")
-        exit()
+        try:
+            # Load explosion animation frames
+            for i in range(1, 10):  # 9 frames
+                path = f"{EXPLOSION_DIR_PATH}/{i}.png"
+                try:
+                    frame = pygame.image.load(path).convert_alpha()
+                    explosion_animation_frames.append(frame)
+                except Exception as e:
+                    logger.error(f"Error loading explosion frame {i}: {e}")
+                    # Don't exit, just log the error and continue
+                    logger.warning(f"Continuing without explosion frame {i}")
+        except Exception as e:
+            logger.error(f"Error loading explosion frames: {e}")
+            # Don't exit, just log the error and continue
+            logger.warning("Continuing without explosion frames")
 
 def load_ui_assets():
     """Load UI assets like heart sprite."""
@@ -549,4 +641,34 @@ def get_bomb_animation_frames():
 
 def get_explosion_animation_frames():
     """Get the explosion animation frames."""
-    return explosion_animation_frames 
+    return explosion_animation_frames
+
+def load_simplified_background():
+    """Load simplified background for web environment."""
+    global background_layers, background_widths
+    
+    background_layers = []
+    background_widths = []
+    
+    # For web, only load the essential background layers
+    bg_paths = [
+        SKY_PATH,
+        MOUNTAINS_PATH,
+    ]
+    
+    try:
+        for path in bg_paths:
+            img = pygame.image.load(path).convert_alpha()
+            
+            # Web optimization: Scale down background images for better performance
+            if IS_WEB:
+                # Reduce the size by 25% for web
+                new_width = int(img.get_width() * 0.75)
+                new_height = int(img.get_height() * 0.75)
+                img = pygame.transform.scale(img, (new_width, new_height))
+            
+            background_layers.append(img)
+            background_widths.append(img.get_width())
+    except Exception as e:
+        logger.error(f"Error loading background assets: {e}")
+        exit() 

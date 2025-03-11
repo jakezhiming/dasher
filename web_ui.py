@@ -1,4 +1,4 @@
-import pygame
+from pygame_compat import pygame
 import os
 
 class ApiKeyInput:
@@ -67,9 +67,19 @@ class ApiKeyInput:
 
 def is_web_environment():
     """Check if running in a web environment (Pygbag)."""
-    # A simple heuristic to check if we're in a web environment
-    # In Pygbag, there should be a specific environment variable or path
-    return 'PYODIDE_PACKAGE_ABI' in os.environ or '__PYGBAG__' in os.environ or os.path.exists('/.emscripten')
+    # More robust detection for web environment
+    try:
+        import platform
+        if platform.system() == 'Emscripten':
+            return True
+    except:
+        pass
+    
+    # Fallback to environment variable checks
+    return ('PYODIDE_PACKAGE_ABI' in os.environ or 
+            '__PYGBAG__' in os.environ or 
+            'EMSCRIPTEN' in os.environ or
+            os.path.exists('/.emscripten'))
 
 
 def load_api_key_from_storage():

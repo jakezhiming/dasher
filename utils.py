@@ -1,4 +1,4 @@
-import pygame
+from pygame_compat import pygame
 from constants.paths import FONT_PATH
 from assets_loader import get_font, get_background_layers, get_background_widths
 from logger import get_module_logger

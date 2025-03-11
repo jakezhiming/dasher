@@ -239,4 +239,8 @@ Do not use any emojis or special characters.
         """Change to a different random personality"""
         new_personality = random.choice([p for p in PERSONALITIES if p != self.personality])
         self.personality = new_personality
-        return self.personality 
+        return self.personality
+
+    async def process_message(self, original_message, timeout=2):
+        """Process a message and return the response."""
+        return await self.get_streaming_response(original_message, timeout) 

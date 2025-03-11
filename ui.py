@@ -1,4 +1,4 @@
-import pygame
+from pygame_compat import pygame
 import math
 from constants.colors import BLUE, CYAN, MAGENTA, RED, WHITE, WHITE_OVERLAY, BLACK, GRAY, DARK_GREY
 from constants.screen import PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH
@@ -174,26 +174,39 @@ def draw_ui(screen, player):
     # Get and display the streaming status message
     message = get_status_message()
     
+    # Ensure message is a valid string
+    if message is None:
+        message = ""
+    elif not isinstance(message, str):
+        try:
+            message = str(message)
+        except:
+            message = ""
+    
     # Calculate max width for messages (leave some margin on both sides)
     max_message_width = WIDTH - 80  # Reduced to make room for player sprite
     
     # Get player idle animation frame for the status bar
     # Use the player's current animation frame to sync with the main animation
     animation_key = 'idle_right'
-    frame_index = player.animation_frame % len(player_frames[animation_key])
-    player_icon = get_frame(animation_key, frame_index)
     
-    # Scale down the player icon to fit in the status bar
-    icon_size = 40
-    aspect_ratio = player_icon.get_width() / player_icon.get_height()
-    icon_width = int(icon_size * aspect_ratio)
-    icon_height = icon_size
-    player_icon = pygame.transform.scale(player_icon, (icon_width, icon_height))
-    
-    # Draw the player icon to the left of the message
-    icon_x = 10
-    icon_y = PLAY_AREA_HEIGHT + (STATUS_BAR_HEIGHT - icon_height) // 2
-    screen.blit(player_icon, (icon_x, icon_y))
+    # Make sure we have valid player frames before trying to access them
+    if animation_key in player_frames and player_frames[animation_key]:
+        frame_index = player.animation_frame % len(player_frames[animation_key])
+        player_icon = get_frame(animation_key, frame_index)
+        
+        if player_icon:
+            # Scale down the player icon to fit in the status bar
+            icon_size = 40
+            aspect_ratio = player_icon.get_width() / player_icon.get_height()
+            icon_width = int(icon_size * aspect_ratio)
+            icon_height = icon_size
+            player_icon = pygame.transform.scale(player_icon, (icon_width, icon_height))
+            
+            # Draw the player icon to the left of the message
+            icon_x = 10
+            icon_y = PLAY_AREA_HEIGHT + (STATUS_BAR_HEIGHT - icon_height) // 2
+            screen.blit(player_icon, (icon_x, icon_y))
     
     # Display current message in first row
     message_text = render_retro_text(message, 16, BLACK, max_message_width)

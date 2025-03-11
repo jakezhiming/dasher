@@ -52,7 +52,7 @@ def build_with_pygbag():
     print("Building game with pygbag...")
     
     # Run pygbag on the main.py file
-    cmd = [sys.executable, "-m", "pygbag", "--ume_block=0", "main.py"]
+    cmd = [sys.executable, "-m", "pygbag", "main.py"]
     
     try:
         subprocess.run(cmd, check=True)
