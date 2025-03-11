@@ -69,7 +69,7 @@ def build_with_pygbag():
         print("Found .env.web file in root directory")
     
     # Run pygbag on the main.py file
-    cmd = [sys.executable, "-m", "pygbag", "main.py"]
+    cmd = [sys.executable, "-m", "pygbag", "--build", "main.py"]
     
     try:
         subprocess.run(cmd, check=True)
@@ -194,6 +194,9 @@ def main():
     if build_with_pygbag():
         print("\nYour game is now ready for web deployment!")
         print("You can upload the contents of the 'build/web' directory to any web server.")
+        print("To test locally, run:")
+        print("  1. python -m http.server --directory build/web")
+        print("  2. Open your browser and go to: http://localhost:8000")
         
         if not args.proxy_url:
             print("\nNOTE: You didn't specify a proxy server URL.")
@@ -201,6 +204,7 @@ def main():
             print("To use a proxy server, run:")
             print("  1. python proxy_server.py  # In a separate terminal")
             print("  2. python pygbag_build.py --proxy-url http://localhost:5000/api/openai")
+            print("  3. python -m http.server --directory build/web")
 
 if __name__ == "__main__":
     main() 

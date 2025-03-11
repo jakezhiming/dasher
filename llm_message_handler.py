@@ -1,4 +1,5 @@
 import os
+import json
 import random
 import asyncio
 from logger import get_module_logger
@@ -56,7 +57,7 @@ class LLMMessageHandler:
                 self.client = None
         elif IS_WEB:
             # In web environment, we'll use the proxy URL
-            logger.info("Web environment detected, will use proxy URL for OpenAI API calls")
+            logger.info(f"Web environment detected, using proxy URL: {self.proxy_url}")
             # We'll initialize the client when needed
         
         # Initialize conversation history
@@ -108,10 +109,7 @@ Do not use any emojis or special characters.
             if IS_WEB:
                 # Use Pyodide's js fetch for web version
                 try:
-                    rephrased_message = await asyncio.wait_for(self._fetch_openai_web(prompt, original_message), timeout)
-                    # Add to conversation history
-                    self.add_to_conversation_history(original_message, rephrased_message)
-                    return rephrased_message
+                    complete_message = await asyncio.wait_for(self._fetch_openai_web(prompt, original_message), timeout)
                 except asyncio.TimeoutError:
                     logger.error(f"API call timed out after {timeout} seconds")
                     return original_message
@@ -134,23 +132,22 @@ Do not use any emojis or special characters.
                     async for chunk in stream:
                         if chunk.choices[0].delta.content:
                             complete_message += chunk.choices[0].delta.content
-                    
-                    complete_message = complete_message.strip()
-                    if complete_message.startswith('"') and complete_message.endswith('"'):
-                        complete_message = complete_message[1:-1].strip()
-
-                    # Store the complete message
-                    self.current_message = complete_message
-                    
-                    # Add to conversation history
-                    self.add_to_conversation_history(original_message, complete_message)
-                    
-                    return complete_message
                 except asyncio.TimeoutError:
                     logger.error(f"API call timed out after {timeout} seconds. Switch to default messages.")
                     self.client = None
                     return original_message
+
+            complete_message = complete_message.strip()
+            if complete_message.startswith('"') and complete_message.endswith('"'):
+                complete_message = complete_message[1:-1].strip()
+
+            # Store the complete message
+            self.current_message = complete_message
             
+            # Add to conversation history
+            self.add_to_conversation_history(original_message, complete_message)
+            return complete_message
+
         except Exception as e:
             logger.error(f"Error in LLM API call: {e}. Switch to default messages.")
             self.client = None
@@ -174,51 +171,42 @@ Do not use any emojis or special characters.
                 except Exception as e:
                     logger.error(f"Failed to get proxy URL from JavaScript: {e}")
             
-            if not self.proxy_url:
-                logger.error("No proxy URL configured for web API calls")
-                return original_message
-            
-            # Prepare the request payload - don't include API key, rely on proxy
-            payload = {
-                "model": "gpt-4o-mini",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 100,
-                "temperature": 0.5
-            }
-            
-            # Use the proxy server URL
-            url = self.proxy_url
-            logger.info(f"Making API call to proxy server at: {url}")
-            
-            # In web environment, we need to be careful with asyncio
-            # Use a simpler approach that doesn't rely on creating new event loops
+            # Use the new JavaScript interface to fetch LLM response
             try:
-                from js import fetch, JSON
+                from js import window  # Pyodide's interface to JavaScript
+
+                if not hasattr(window, 'fetchLLMResponse'):
+                    logger.error("fetchLLMResponse is not defined in JavaScript")
+                    return original_message
+
+                if not callable(window.fetchLLMResponse):
+                    logger.error(f"fetchLLMResponse exists but is not callable: {window.fetchLLMResponse}")
+                    return original_message
                 
-                # Convert the payload to a JSON string
-                payload_json = JSON.stringify(payload)
-                
-                # Make the fetch request
-                response = await fetch(url, {
-                    "method": "POST",
-                    "headers": {
-                        "Content-Type": "application/json"
-                    },
-                    "body": payload_json
+                payload = json.dumps({
+                    "model": "gpt-4o-mini",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 100,
+                    "temperature": 0.5
                 })
+
+                # Call JavaScript function to make the API request
+                window.fetchLLMResponse(payload)
                 
-                # Parse the response
-                if response.ok:
-                    result = await response.json()
-                    if result and "choices" in result and len(result["choices"]) > 0:
-                        content = result["choices"][0]["message"]["content"]
-                        logger.info("Successfully received response from OpenAI API")
-                        return content
-                    else:
-                        logger.error(f"Invalid response format: {result}")
-                        return original_message
+                # Wait briefly for the response
+                llm_response = None
+                for _ in range(int(timeout/0.1)):  # timeout
+                    await asyncio.sleep(0.1)
+                    if hasattr(window, 'llmResponse'):
+                        llm_response = window.llmResponse
+                        del window.llmResponse  # Clear it after use
+                        break
+                
+                if llm_response:
+                    logger.info("Successfully received response from LLM API")
+                    return llm_response
                 else:
-                    logger.error(f"API call failed with status: {response.status}")
+                    logger.error(f"No response received from Proxy Server after timeout of {timeout} seconds")
                     return original_message
                 
             except Exception as e:

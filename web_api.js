@@ -4,32 +4,35 @@
  * All API calls are routed through a proxy server.
  */
 
-// Global variable to store the LLM response
 window.llmResponse = null;
 
-/**
- * Get the proxy URL from environment variables
- * @returns {string} The proxy URL or null if not found
- */
 window.getProxyUrl = function() {
-    // Check if we have environment variables
     if (window.ENV && window.ENV.OPENAI_PROXY_URL) {
         console.log("Using proxy URL from environment variables:", window.ENV.OPENAI_PROXY_URL);
         return window.ENV.OPENAI_PROXY_URL;
     }
     
-    // Fallback to default
-    console.log("No proxy URL found in environment variables");
+    // Add a fallback mechanism to check if the environment.js file is loaded
+    console.log("No proxy URL found in window.ENV. Current window.ENV:", window.ENV);
+    
+    // Check if we're in a development environment and use a default URL
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+        const defaultProxyUrl = "http://localhost:5000/api/openai";
+        console.log("Using default development proxy URL:", defaultProxyUrl);
+        return defaultProxyUrl;
+    }
+    
+    console.log("No proxy URL found in environment variables and not in development mode");
     return null;
 };
 
-/**
- * Fetch LLM response from the proxy server
- * @param {string} url - The proxy server URL
- * @param {string} payload_json - The JSON payload as a string
- */
 window.fetchLLMResponse = async function(url, payload_json) {
-    // If no URL is provided, try to get it from environment variables
+    // Handle case where url is the only argument (backwards compatibility)
+    if (arguments.length === 1 && typeof url === 'string' && !payload_json) {
+        payload_json = url;  // Assume single argument is the payload
+        url = null;          // Let getProxyUrl() provide the URL
+    }
+    
     if (!url) {
         url = window.getProxyUrl();
         if (!url) {
@@ -41,45 +44,66 @@ window.fetchLLMResponse = async function(url, payload_json) {
     
     console.log("Fetching LLM response from proxy server:", url);
     try {
-        // Parse the payload JSON
-        const payload = JSON.parse(payload_json);
-        console.log("Payload:", payload);
-        
-        // Make the fetch request
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: payload_json
-        });
-        
-        // Check if the response is ok
-        if (!response.ok) {
-            console.error("Error fetching LLM response:", response.status, response.statusText);
-            window.llmResponse = "Error: " + response.status + " " + response.statusText;
+        // Validate payload_json
+        if (!payload_json || typeof payload_json !== 'string') {
+            console.error("Invalid payload_json:", payload_json);
+            window.llmResponse = "Error: Invalid or missing payload";
             return;
         }
         
-        // Parse the response JSON
-        const data = await response.json();
-        console.log("LLM response:", data);
+        let payload;
+        try {
+            payload = JSON.parse(payload_json);
+        } catch (e) {
+            console.error("Failed to parse payload_json:", e.message);
+            window.llmResponse = "Error: Invalid payload JSON - " + e.message;
+            return;
+        }
+        console.log("Payload:", payload);
         
-        // Extract the message content
-        let message = "";
-        if (data.choices && data.choices.length > 0) {
-            if (data.choices[0].message) {
-                message = data.choices[0].message.content;
-            } else if (data.choices[0].text) {
-                message = data.choices[0].text;
-            }
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload_json
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Error fetching LLM response:", response.status, response.statusText, errorText);
+            window.llmResponse = `Error: ${response.status} ${response.statusText} - ${errorText}`;
+            return;
         }
         
-        // Store the response
-        window.llmResponse = message || JSON.stringify(data);
+        const text = await response.text();
+        console.log("Raw response text:", text);
+        
+        let message = text;
+        try {
+            const data = JSON.parse(text);
+            console.log("Parsed JSON response:", data);
+            if (data.choices && data.choices.length > 0) {
+                if (data.choices[0].message) {
+                    message = data.choices[0].message.content;
+                } else if (data.choices[0].text) {
+                    message = data.choices[0].text;
+                }
+            } else if (data.response) {
+                message = data.response;
+            }
+        } catch (jsonError) {
+            console.warn("Response is not valid JSON:", jsonError.message, "Using raw text instead");
+            if (text === "undefined" || text === "" || text === null) {
+                console.error("Received invalid or empty response:", text);
+                window.llmResponse = "Error: Empty or invalid response from proxy";
+                return;
+            }
+            message = text;
+        }
+        
+        window.llmResponse = message;
         console.log("Stored LLM response:", window.llmResponse);
     } catch (error) {
         console.error("Error in fetchLLMResponse:", error);
         window.llmResponse = "Error: " + error.message;
     }
-}; 
+};
