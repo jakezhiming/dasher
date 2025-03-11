@@ -1,8 +1,11 @@
-from compat import pygame
 import asyncio
-from compat import load_dotenv
+from compat import pygame, load_dotenv, is_web_environment
+from utils import extract_env_from_file
 
-load_dotenv()
+if is_web_environment():
+    extract_env_from_file(".env.web")
+else:
+    load_dotenv()
 
 from assets_loader import load_all_assets
 from constants.colors import BLUE, RED
@@ -19,13 +22,12 @@ import input_handler
 from level_generator import generate_new_segment, remove_old_objects
 from effects import effect_manager
 from logger import logger, log_game_start, log_game_over
+from web_ui import is_web_environment
 
-# Try to import web-specific UI components
-try:
-    from web_ui import ApiKeyInput, is_web_environment, load_api_key_from_storage
-    IS_WEB = is_web_environment()
+if is_web_environment():
+    IS_WEB = True
     logger.info("Web environment detected")
-except ImportError:
+else:
     IS_WEB = False
     logger.info("Desktop environment detected")
 

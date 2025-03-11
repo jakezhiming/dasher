@@ -70,5 +70,4 @@ except ImportError:
     logger.info("Using fallback dotenv implementation")
 
 
-__all__ = ['load_dotenv'] 
-__all__ = ['pygame'] 
+__all__ = ['load_dotenv', 'pygame', 'is_web_environment'] 

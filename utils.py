@@ -1,8 +1,10 @@
+import os
 from compat import pygame
 from constants.paths import FONT_PATH
 from assets_loader import (get_font, get_background_layers, get_background_widths, 
-                          get_parallax_enabled, create_cached_background, get_cached_background, IS_WEB)
+                          create_cached_background, get_cached_background, IS_WEB)
 from logger import get_module_logger
+from config import USE_CACHED_BACKGROUND
 
 logger = get_module_logger('utils')
 
@@ -111,23 +113,22 @@ def draw_background(screen, camera_x=0):
     """Draw a parallax background using the Glacial Mountains assets."""
     screen_width = screen.get_width()
     
-    # For web version with fixed background, use cached background if available
-    if IS_WEB and not get_parallax_enabled():
+    if IS_WEB or USE_CACHED_BACKGROUND:
         cached_bg = get_cached_background()
         
         # If screen width changed or no cached background exists, create one
         if cached_bg is None or screen_width != cached_bg.get_width():
             cached_bg = create_cached_background(screen_width)
         
-        # Draw the cached background
+        # Draw the cached background if available, otherwise fall back to regular drawing
         if cached_bg:
             screen.blit(cached_bg, (0, 0))
             return
+        # If cached_bg is still None, we'll fall through to the regular drawing method
     
-    # Regular parallax background for non-web version or fallback
+    # Regular (non-cached) background drawing
     background_layers = get_background_layers()
     background_widths = get_background_widths()
-    parallax_enabled = get_parallax_enabled()
     
     if not background_layers or not background_widths:
         logger.error("No background layers or widths loaded")
@@ -141,17 +142,7 @@ def draw_background(screen, camera_x=0):
         if i >= len(parallax_factors):
             break
             
-        # Calculate the parallax offset for this layer
-        if parallax_enabled:
-            # Use int() to ensure we get pixel-perfect positioning
-            layer_offset = int(-(camera_x * parallax_factors[i])) % background_widths[i]
-        else:
-            # For fixed background (no parallax), only the first layer (sky) moves
-            # All other layers stay fixed
-            if i == 0:
-                layer_offset = int(-(camera_x * 0.0)) % background_widths[i]  # Sky is always fixed
-            else:
-                layer_offset = 0  # Fixed position for all other layers
+        layer_offset = int(-(camera_x * parallax_factors[i])) % background_widths[i]
         
         # Draw the layer, potentially multiple times to cover the screen
         # First draw at the calculated offset
@@ -165,3 +156,24 @@ def draw_background(screen, camera_x=0):
         # Draw to the left if needed (for when the offset is positive)
         if layer_offset > 0:
             screen.blit(layer, (layer_offset - background_widths[i], 0)) 
+
+def extract_env_from_file(file_path):
+    """Extract environment variables directly from a .env file."""
+    try:
+        with open(file_path, 'r') as f:
+            env_content = f.read()
+            
+            # Extract variables using regex
+            import re
+            env_vars = re.findall(r'^([A-Za-z0-9_]+)\s*=\s*([^\n#]+)', env_content, re.MULTILINE)
+            
+            for key, value in env_vars:
+                # Clean the value (remove quotes and whitespace)
+                value = value.strip().strip('"\'')
+                # Set in environment
+                os.environ[key] = value
+
+            return True
+    except Exception as e:
+        logger.error(f"Error extracting variables from {file_path}: {e}")
+        return False

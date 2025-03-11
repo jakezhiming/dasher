@@ -14,6 +14,7 @@ from constants.paths import (
 )
 from constants.game_objects import COIN_SIZE, POWERUP_SIZE
 from constants.screen import PLAY_AREA_HEIGHT
+from config import USE_CACHED_BACKGROUND
 from logger import get_module_logger
 
 logger = get_module_logger('assets_loader')
@@ -91,28 +92,24 @@ heart_sprite = None
 PLAYER_SPRITE_WIDTH = PLAYER_WIDTH
 PLAYER_SPRITE_HEIGHT = PLAYER_HEIGHT
 
-# Flag to control parallax effect
-ENABLE_PARALLAX = True
-
-# Cached background surface for web version
+# Cached background surface
 CACHED_BACKGROUND = None
 SCREEN_WIDTH = 0
 
 def load_all_assets():
     """Load all game assets."""
     try:
-        global ENABLE_PARALLAX
+        # First load the background assets
+        load_background_assets()
         
-        if IS_WEB:
-            load_background_assets()
-            ENABLE_PARALLAX = False  # Disable parallax for web version
-            
-            # Pre-create a cached background with a default width
-            # It will be recreated if the screen width changes
-            create_cached_background(800)  # Default width, will be updated on first draw
-        else:
-            load_background_assets()
-
+        # Then create the cached background if needed
+        if USE_CACHED_BACKGROUND:
+            screen_width = pygame.display.get_surface().get_width() if pygame.display.get_surface() else 800
+            cached_bg = create_cached_background(screen_width)
+            if cached_bg is None:
+                logger.error("Failed to create cached background")
+        
+        # Load the rest of the assets
         load_player_sprites()
         load_fonts()
         load_cloud_image()
@@ -595,39 +592,53 @@ def get_explosion_animation_frames():
     """Get the explosion animation frames."""
     return explosion_animation_frames
 
-def get_parallax_enabled():
-    """Return whether parallax effect is enabled."""
-    return ENABLE_PARALLAX
-
 def create_cached_background(screen_width):
     """Create a cached background surface for web version to improve performance."""
     global CACHED_BACKGROUND, SCREEN_WIDTH
     
-    if IS_WEB and not ENABLE_PARALLAX and (CACHED_BACKGROUND is None or screen_width != SCREEN_WIDTH):
-        SCREEN_WIDTH = screen_width
-        CACHED_BACKGROUND = pygame.Surface((screen_width, PLAY_AREA_HEIGHT), pygame.SRCALPHA)
-        
-        # Draw all background layers to the cached surface
-        for i, layer in enumerate(background_layers):
-            # For fixed background, all layers are at position 0
-            if i == 0:  # Sky layer
-                CACHED_BACKGROUND.blit(layer, (0, 0))
-            else:
-                # Center other layers
-                layer_width = background_widths[i]
-                if layer_width < screen_width:
-                    # If layer is narrower than screen, center it
-                    x_pos = (screen_width - layer_width) // 2
-                    CACHED_BACKGROUND.blit(layer, (x_pos, 0))
+    try:
+        # Make sure background layers are loaded
+        if not background_layers or len(background_layers) == 0:
+            logger.warning("Background layers not loaded, loading them now")
+            load_background_assets()
+            
+        if not background_layers or len(background_layers) == 0:
+            logger.error("Failed to load background layers")
+            return None
+            
+        if CACHED_BACKGROUND is None or screen_width != SCREEN_WIDTH:
+            SCREEN_WIDTH = screen_width
+            CACHED_BACKGROUND = pygame.Surface((screen_width, PLAY_AREA_HEIGHT), pygame.SRCALPHA)
+            
+            # Draw all background layers to the cached surface
+            for i, layer in enumerate(background_layers):
+                if i >= len(background_layers):
+                    break
+                    
+                # For fixed background, all layers are at position 0
+                if i == 0:  # Sky layer
+                    CACHED_BACKGROUND.blit(layer, (0, 0))
                 else:
-                    # If layer is wider than screen, show the middle portion
-                    x_pos = (layer_width - screen_width) // 2
-                    CACHED_BACKGROUND.blit(layer, (-x_pos, 0))
+                    # Center other layers
+                    layer_width = background_widths[i]
+                    if layer_width < screen_width:
+                        # If layer is narrower than screen, center it
+                        x_pos = (screen_width - layer_width) // 2
+                        CACHED_BACKGROUND.blit(layer, (x_pos, 0))
+                    else:
+                        # If layer is wider than screen, show the middle portion
+                        x_pos = (layer_width - screen_width) // 2
+                        CACHED_BACKGROUND.blit(layer, (-x_pos, 0))
+            
+            logger.info(f"Created cached background with width {screen_width}")
         
-        logger.info("Created cached background for web version")
-    
-    return CACHED_BACKGROUND
+        return CACHED_BACKGROUND
+    except Exception as e:
+        logger.error(f"Error creating cached background: {e}")
+        return None
 
 def get_cached_background():
     """Get the cached background surface for web version."""
+    if CACHED_BACKGROUND is None:
+        logger.warning("Cached background requested but is None")
     return CACHED_BACKGROUND

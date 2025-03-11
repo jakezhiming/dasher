@@ -2,6 +2,7 @@ import os
 import random
 import json
 import asyncio
+from utils import extract_env_from_file
 from logger import get_module_logger
 
 logger = get_module_logger('llm_message_handler')
@@ -16,34 +17,43 @@ except ImportError:
 
 # Try to detect web environment
 try:
-    from js import window
-    IS_WEB = True
-    logger.info("Web environment detected via js.window")
+    from compat import is_web_environment
+    IS_WEB = is_web_environment()
+    if IS_WEB:
+        logger.info("Web environment detected")
+    else:
+        logger.info("Desktop environment detected")
 except ImportError as e:
     IS_WEB = False
+    logger.error(f"Failed to import is_web_environment: {e}")
 
 from constants.messages import PERSONALITIES
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-PROXY_URL = os.getenv("OPENAI_PROXY_URL", "")
+OPENAI_PROXY_URL = os.getenv("OPENAI_PROXY_URL", "")
 
 class LLMMessageHandler:
     def __init__(self):
         # Initialize OpenAI client
         self.client = None
-        self.api_key = OPENAI_API_KEY
-        self.proxy_url = PROXY_URL
-
-        # For web compatibility with Pygbag
-        if not OPENAI_AVAILABLE and not IS_WEB:
-            logger.error("Not detected to be running in desktop or web mode - LLM features disabled")
-        elif IS_WEB:
-            if self.proxy_url:
-                logger.info(f"Running in web mode - Use proxy server at {self.proxy_url}")
-            else:
-                logger.warning("No proxy URL configured - LLM features disabled")
+        
+        # For web compatibility, reload environment variables
+        if IS_WEB:
+            # Load environment variables directly from .env.web
+            extract_env_from_file(".env.web")
+            
+            self.api_key = None
+            # Get the proxy URL after loading .env.web
+            self.proxy_url = os.getenv("OPENAI_PROXY_URL", "")
+            logger.info(f"Using proxy URL from environment variable: {self.proxy_url}")
+            
+            if not self.proxy_url:
+                logger.warning("No proxy URL configured - LLM features disabled in web mode")
         else:
             # Desktop mode with OpenAI Python SDK
+            self.api_key = os.getenv("OPENAI_API_KEY", "")
+            self.proxy_url = None
+            
             if self.api_key:
                 self.client = AsyncOpenAI(api_key=self.api_key)
                 logger.info("Running in desktop mode - OpenAI client initialized")
@@ -165,10 +175,22 @@ Do not use any emojis or special characters.
         try:
             # Check if proxy URL is configured
             if not self.proxy_url:
+                # Try to get the proxy URL from JavaScript
+                try:
+                    from js import window
+                    if hasattr(window, 'getProxyUrl'):
+                        proxy_url = window.getProxyUrl()
+                        if proxy_url:
+                            self.proxy_url = str(proxy_url)
+                            logger.info(f"Got proxy URL from JavaScript: {self.proxy_url}")
+                except Exception as e:
+                    logger.error(f"Failed to get proxy URL from JavaScript: {e}")
+            
+            if not self.proxy_url:
                 logger.error("No proxy URL configured for web API calls")
                 return prompt
             
-            # Prepare the request payload
+            # Prepare the request payload - don't include API key, rely on proxy
             payload = {
                 "model": "gpt-4o-mini",
                 "messages": [{"role": "user", "content": prompt}],
@@ -178,6 +200,7 @@ Do not use any emojis or special characters.
             
             # Use the proxy server URL
             url = self.proxy_url
+            logger.info(f"Making API call to proxy server at: {url}")
             
             # Set up the request parameters for JavaScript
             try:
