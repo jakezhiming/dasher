@@ -175,9 +175,7 @@ async def main():
                 effect_manager.update(dt)
                 
                 if camera_x + WIDTH > rightmost_floor_end - 600:
-                    old_rightmost = rightmost_floor_end
                     rightmost_floor_end = generate_new_segment(player, floors, platforms, obstacles, coins, power_ups, camera_x, WIDTH)
-                    logger.debug(f"Generated new segment from {old_rightmost} to {rightmost_floor_end}")
                 
                 floors, platforms, obstacles, coins, power_ups = remove_old_objects(player, floors, platforms, obstacles, coins, power_ups)
 
@@ -281,14 +279,18 @@ async def main():
                 
                 logger.info("Game reset after game over")
                 
-                # Change to a new LLM personality
-                try:
-                    new_personality = message_manager.llm_handler.change_personality()
-                    message_manager.set_message(f"Welcome back! I'm now speaking like a {new_personality}.")
-                    logger.info(f"Changed LLM personality to {new_personality}")
-                except Exception as e:
-                    # Handle case where LLM is not available
-                    logger.warning(f"Failed to change LLM personality: {str(e)}")
+                # Change to a new LLM personality if available
+                if message_manager.llm_handler.is_available():
+                    try:
+                        new_personality = message_manager.llm_handler.change_personality()
+                        message_manager.set_message(f"Welcome back! I'm now speaking like a {new_personality}.")
+                        logger.info(f"Changed LLM personality to {new_personality}")
+                    except Exception as e:
+                        # Handle case where personality change fails for some reason
+                        logger.warning(f"Failed to change LLM personality: {str(e)}")
+                        message_manager.set_message("Welcome back! Let's play again!")
+                else:
+                    # LLM service is not available
                     message_manager.set_message("Welcome back! Let's play again!")
 
             # Update the display

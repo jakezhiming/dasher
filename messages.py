@@ -1,7 +1,7 @@
-from pygame_compat import pygame, is_web_environment
+import pygame
 import asyncio
 import threading
-from constants.ui import MESSAGE_CHAR_DELAY, DEFAULT_MESSAGE_DELAY
+from constants.ui import MESSAGE_CHAR_DELAY, DEFAULT_MESSAGE_DELAY, MESSAGE_TRANSITION_DELAY
 from llm_message_handler import LLMMessageHandler
 from logger import get_module_logger
 
@@ -31,151 +31,118 @@ class StatusMessageManager:
         # Initialize LLM message handler
         self.llm_handler = LLMMessageHandler()
         
-        # Set up asyncio event loop in a separate thread - but only in desktop environment
-        self.loop = None
-        self.thread = None
-        
-        try:
-            if not is_web_environment():
-                # In desktop environment, create a new event loop and run it in a separate thread
-                self.loop = asyncio.new_event_loop()
-                self.thread = threading.Thread(target=self._run_event_loop, daemon=True)
-                self.thread.start()
-                logger.info("Started event loop in separate thread (desktop environment)")
-            else:
-                # In web environment, use the existing event loop
-                self.loop = asyncio.get_event_loop()
-                logger.info("Using existing event loop (web environment)")
-        except Exception as e:
-            logger.error(f"Error setting up event loop: {e}")
-            # Fallback to a simple implementation without asyncio
-            logger.info("Falling back to simple implementation without asyncio")
-            self.loop = None
+        # Set up asyncio event loop in a separate thread
+        self.loop = asyncio.new_event_loop()
+        self.thread = threading.Thread(target=self._run_event_loop, daemon=True)
+        self.thread.start()
         
         # Add a delay between messages in the queue
-        self.message_transition_delay = 500  # 500ms delay between messages
+        self.message_transition_delay = MESSAGE_TRANSITION_DELAY
         self.message_completed_time = 0  # Track when a message was fully displayed
-        
-        # Initialize with a welcome message
-        self.set_message("Welcome to Dasher! Use arrow keys to move and SPACE to jump.")
     
     def _run_event_loop(self):
-        """Run the asyncio event loop in a separate thread."""
-        try:
-            asyncio.set_event_loop(self.loop)
-            self.loop.run_forever()
-        except Exception as e:
-            logger.error(f"Error in event loop: {e}")
-    
-    def set_message(self, message):
-        """Set a new message to be displayed."""
-        if not message:
-            return
-            
-        # Store the current message as the previous message
-        if self.current_full_message:
-            self.previous_message = self.current_full_message
-            
-        # Reset the display index for the new message
-        self.display_index = 0
-        self.last_char_time = pygame.time.get_ticks()
+        """Run the asyncio event loop in a separate thread"""
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
         
-        # Process the message with LLM if available
-        if self.loop and self.llm_handler.is_available():
-            try:
-                if is_web_environment():
-                    # In web environment, use a different approach
-                    asyncio.ensure_future(self._process_with_llm_web(message), loop=self.loop)
-                else:
-                    # In desktop environment, use run_coroutine_threadsafe
-                    if self.loop.is_running():
-                        future = asyncio.run_coroutine_threadsafe(self._process_with_llm(message), self.loop)
-                        # We don't wait for the result here, it will be processed asynchronously
-                    else:
-                        # Fallback to direct processing if loop is not running
-                        self.target_message = message
-            except Exception as e:
-                logger.error(f"Error processing message with LLM: {e}")
-                # Fallback to direct message setting
-                self.target_message = message
-        else:
-            # If LLM is not available, just set the message directly
-            self.target_message = message
+    def set_message(self, message):
+        """Add a message to the queue. Doesn't immediately display it."""
+        # Check if the message is new and not already in the queue or being displayed
+        # Also check against the previous message to prevent immediate repetition
+        if (message and 
+            message not in self.message_queue and 
+            message != self.target_message and 
+            message != self.previous_message and
+            message != self.current_full_message):
+            
+            # If LLM is not available, add the message directly to the queue
+            if not self.llm_handler.is_available():
+                self.message_queue.append(message)
+                # If we're not currently displaying a message, show this one immediately
+                if not self.target_message:
+                    self._load_next_message()
+            else:
+                # Process the message through LLM
+                asyncio.run_coroutine_threadsafe(self._process_with_llm(message), self.loop)
     
     async def _process_with_llm(self, original_message):
-        """Process a message with the LLM in desktop environment."""
+        """Process the message through LLM"""
         try:
-            processed_message = await self.llm_handler.process_message(original_message)
-            # Update the target message with the processed message
-            self.target_message = processed_message if processed_message else original_message
+            # Get the complete response as a string instead of streaming chunks
+            full_response = await self.llm_handler.get_streaming_response(original_message)
+
+            # Add the response to the queue if it's not a duplicate
+            if (full_response and 
+                full_response not in self.message_queue and 
+                full_response != self.target_message and
+                full_response != self.previous_message and
+                full_response != self.current_full_message):
+                
+                self.message_queue.append(full_response)
+                
+                # If we're not currently displaying a message, show this one immediately
+                if not self.target_message:
+                    self._load_next_message()
         except Exception as e:
-            logger.error(f"Error in _process_with_llm: {e}")
-            # Fallback to the original message
-            self.target_message = original_message
-    
-    async def _process_with_llm_web(self, original_message):
-        """Process a message with the LLM in web environment."""
-        try:
-            # In web environment, we need to handle this differently
-            processed_message = await self.llm_handler.process_message(original_message)
-            
-            # Update the target message with the processed message
-            if processed_message:
-                self.target_message = processed_message
-            else:
-                self.target_message = original_message
-        except Exception as e:
-            logger.error(f"Error in _process_with_llm_web: {e}")
-            # Fallback to the original message
-            self.target_message = original_message
+            logger.error(f"Error processing LLM message: {e}")
+            # Fall back to original message
+            if (original_message not in self.message_queue and
+                original_message != self.target_message and
+                original_message != self.previous_message and
+                original_message != self.current_full_message):
+                
+                self.message_queue.append(original_message)
+                if not self.target_message:
+                    self._load_next_message()
     
     def _load_next_message(self):
         """Load the next message from the queue."""
-        if self.message_queue:
-            next_message = self.message_queue.pop(0)
+        if not self.message_queue:
+            return False
             
-            # Store the current message as the previous message
-            if self.current_full_message:
-                self.previous_message = self.current_full_message
-                
-            # Reset the display index for the new message
-            self.display_index = 0
-            self.last_char_time = pygame.time.get_ticks()
-            
-            # Set the new target message
-            self.target_message = next_message
-        else:
-            # If the queue is empty, clear the target message
-            self.target_message = ""
+        # Save the current message as previous before setting the new one
+        if self.current_full_message:
+            self.previous_message = self.current_full_message
+        
+        # Get the next message from the queue
+        next_message = self.message_queue.pop(0)
+        logger.debug(next_message)
+
+        current_time = pygame.time.get_ticks()
+        self.last_message_time = current_time
+        self.target_message = next_message
+        self.current_full_message = next_message
+        
+        # Reset display index and timing for the character-by-character animation
+        self.display_index = 0
+        self.last_char_time = current_time
+        
+        return True
     
     def update(self):
-        """Update the message display."""
+        """Update the streaming text effect."""
         current_time = pygame.time.get_ticks()
         
-        # If we have a target message, animate it character by character
-        if self.target_message:
-            if self.display_index < len(self.target_message):
-                # Check if it's time to display the next character
-                if current_time - self.last_char_time > self.char_delay:
-                    self.display_index += 1
-                    
-                    self.current_message = self.target_message[:self.display_index]
-                    self.last_char_time = current_time
-            else:
-                # Message is fully displayed
-                if self.current_full_message != self.target_message:
-                    self.current_full_message = self.target_message
-                    self.message_completed_time = current_time
+        # If we're still streaming the message
+        if self.display_index < len(self.target_message):
+            if current_time - self.last_char_time > self.char_delay:
+                self.display_index += 1
+                self.current_message = self.target_message[:self.display_index]
+                self.last_char_time = current_time
                 
-                # Check if it's time to load the next message from the queue
-                if (current_time - self.message_completed_time > self.message_transition_delay and 
-                    self.message_queue):
-                    self._load_next_message()
-        
-        # If we don't have a target message and there's nothing in the queue,
-        # check if it's time to show a default message
-        elif not self.message_queue and self.can_show_default_message():
-            self.show_default_message()
+                # If we just finished displaying the message, record the time
+                if self.display_index == len(self.target_message):
+                    self.last_message_time = current_time
+                    self.message_completed_time = current_time
+        else:
+            # Message is fully displayed
+            self.current_message = self.target_message
+            
+            # If there are messages in the queue, show the next one after the delay
+            if self.message_queue and current_time - self.message_completed_time > self.message_transition_delay:
+                self._load_next_message()
+            
+        return self.current_message
     
     def can_show_default_message(self):
         """Check if enough time has passed to show a new default message."""
@@ -238,8 +205,5 @@ def get_status_message():
             # Increment the default message index to cycle through the messages
             message_manager.default_message_index = (message_manager.default_message_index + 1) % 5
     
-    # Update the message manager
-    message_manager.update()
-    
-    # Return the current message
-    return message_manager.current_message or ""
+    # Update and return the current streaming message
+    return message_manager.update()

@@ -91,11 +91,25 @@ heart_sprite = None
 PLAYER_SPRITE_WIDTH = PLAYER_WIDTH
 PLAYER_SPRITE_HEIGHT = PLAYER_HEIGHT
 
+# Flag to control parallax effect
+ENABLE_PARALLAX = True
+
+# Cached background surface for web version
+CACHED_BACKGROUND = None
+SCREEN_WIDTH = 0
+
 def load_all_assets():
     """Load all game assets."""
     try:
+        global ENABLE_PARALLAX
+        
         if IS_WEB:
             load_background_assets(web=True)
+            ENABLE_PARALLAX = False  # Disable parallax for web version
+            
+            # Pre-create a cached background with a default width
+            # It will be recreated if the screen width changes
+            create_cached_background(800)  # Default width, will be updated on first draw
         else:
             load_background_assets()
 
@@ -144,20 +158,16 @@ def load_background_assets(web=False):
     background_widths = []
     
     # List of background layer paths in order from back to front
-    if web:
-        bg_paths = [
-            SKY_PATH,
-        ]
-    else:
-        bg_paths = [
-            SKY_PATH,
-            CLOUDS_BG_PATH,
-            MOUNTAINS_PATH,
-            CLOUDS_MG_3_PATH,
-            CLOUDS_MG_2_PATH,
-            CLOUD_LONELY_PATH,
-            CLOUDS_MG_1_PATH
-        ]
+    # Load all background layers regardless of platform
+    bg_paths = [
+        SKY_PATH,
+        CLOUDS_BG_PATH,
+        MOUNTAINS_PATH,
+        CLOUDS_MG_3_PATH,
+        CLOUDS_MG_2_PATH,
+        CLOUD_LONELY_PATH,
+        CLOUDS_MG_1_PATH
+    ]
     
     try:
         for path in bg_paths:
@@ -542,11 +552,11 @@ def get_heart_sprite():
     return heart_sprite
 
 def get_background_layers():
-    """Get the background layers."""
+    """Return the background layers."""
     return background_layers
 
 def get_background_widths():
-    """Get the background layer widths."""
+    """Return the background layer widths."""
     return background_widths
 
 def get_ground_texture():
@@ -584,3 +594,40 @@ def get_bomb_animation_frames():
 def get_explosion_animation_frames():
     """Get the explosion animation frames."""
     return explosion_animation_frames
+
+def get_parallax_enabled():
+    """Return whether parallax effect is enabled."""
+    return ENABLE_PARALLAX
+
+def create_cached_background(screen_width):
+    """Create a cached background surface for web version to improve performance."""
+    global CACHED_BACKGROUND, SCREEN_WIDTH
+    
+    if IS_WEB and not ENABLE_PARALLAX and (CACHED_BACKGROUND is None or screen_width != SCREEN_WIDTH):
+        SCREEN_WIDTH = screen_width
+        CACHED_BACKGROUND = pygame.Surface((screen_width, PLAY_AREA_HEIGHT), pygame.SRCALPHA)
+        
+        # Draw all background layers to the cached surface
+        for i, layer in enumerate(background_layers):
+            # For fixed background, all layers are at position 0
+            if i == 0:  # Sky layer
+                CACHED_BACKGROUND.blit(layer, (0, 0))
+            else:
+                # Center other layers
+                layer_width = background_widths[i]
+                if layer_width < screen_width:
+                    # If layer is narrower than screen, center it
+                    x_pos = (screen_width - layer_width) // 2
+                    CACHED_BACKGROUND.blit(layer, (x_pos, 0))
+                else:
+                    # If layer is wider than screen, show the middle portion
+                    x_pos = (layer_width - screen_width) // 2
+                    CACHED_BACKGROUND.blit(layer, (-x_pos, 0))
+        
+        logger.info("Created cached background for web version")
+    
+    return CACHED_BACKGROUND
+
+def get_cached_background():
+    """Get the cached background surface for web version."""
+    return CACHED_BACKGROUND

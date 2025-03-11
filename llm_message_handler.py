@@ -85,7 +85,7 @@ class LLMMessageHandler:
         if len(self.conversation_history) > 10:
             self.conversation_history.pop(0)
     
-    async def get_streaming_response(self, original_message, timeout=2):
+    async def get_streaming_response(self, original_message, timeout=5):
         """Get the LLM response as a complete string"""
         if not self.is_available():
             return original_message
@@ -97,7 +97,7 @@ class LLMMessageHandler:
             # Create the conversation history context
             history_context = ""
             if self.conversation_history:
-                history_context = "Previous messages:\n"
+                history_context = "Previous messages shown in the game:\n"
                 for i, msg in enumerate(self.conversation_history):
                     history_context += f"{i+1}. Original: \"{msg['original']}\", Rephrased: \"{msg['rephrased']}\"\n"
                 history_context += "\n"
@@ -161,7 +161,7 @@ Do not use any emojis or special characters.
         finally:
             self.is_streaming = False
     
-    async def _fetch_openai_web(self, prompt, timeout=2):
+    async def _fetch_openai_web(self, prompt, timeout=5):
         """Use Pyodide's js fetch to call OpenAI API in web environment"""
         try:
             # Prepare the request payload
@@ -237,6 +237,11 @@ Do not use any emojis or special characters.
     
     def change_personality(self):
         """Change to a different random personality"""
+        # Only change personality if LLM service is available
+        if not self.is_available():
+            logger.info("LLM service not available - personality change skipped")
+            return self.personality
+            
         new_personality = random.choice([p for p in PERSONALITIES if p != self.personality])
         self.personality = new_personality
         return self.personality
