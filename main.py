@@ -67,6 +67,9 @@ async def main():
     game_over_timer = 0
     player_has_moved = False
     
+    # Reset conversation history for new game
+    message_manager.llm_handler.reset_conversation_history()
+    
     # Log game start
     log_game_start()
     
@@ -229,6 +232,9 @@ async def main():
             game_over = False
             game_state = GAME_RUNNING
             player_has_moved = False
+            
+            # Reset conversation history for the new game
+            message_manager.llm_handler.reset_conversation_history()
             
             logger.info("Game reset after game over")
             

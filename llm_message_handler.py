@@ -61,10 +61,29 @@ class LLMMessageHandler:
         # For storing the streaming response
         self.current_message = ""
         self.is_streaming = False
+        
+        # Initialize conversation history
+        self.conversation_history = []
+        logger.info("Conversation history initialized")
     
     def is_available(self):
         """Check if the LLM service is available"""
         return (self.client is not None) or (IS_WEB and (self.api_key or self.proxy_url))
+    
+    def reset_conversation_history(self):
+        """Reset the conversation history for a new game"""
+        self.conversation_history = []
+        logger.info("Conversation history reset for new game")
+    
+    def add_to_conversation_history(self, original_message, rephrased_message):
+        """Add a message pair to the conversation history"""
+        self.conversation_history.append({
+            "original": original_message,
+            "rephrased": rephrased_message
+        })
+        # Keep history to a reasonable size (last 10 messages)
+        if len(self.conversation_history) > 10:
+            self.conversation_history.pop(0)
     
     async def get_streaming_response(self, original_message, timeout=2):
         """Get the LLM response as a complete string"""
@@ -75,16 +94,27 @@ class LLMMessageHandler:
             self.is_streaming = True
             self.current_message = ""
             
-            prompt = f"""Rephrase the following message in the style of a {self.personality}. 
-            Keep it very short (within one sentence if possible) and game-appropriate.
-            Do not use any emojis or special characters.
+            # Create the conversation history context
+            history_context = ""
+            if self.conversation_history:
+                history_context = "Previous messages:\n"
+                for i, msg in enumerate(self.conversation_history):
+                    history_context += f"{i+1}. Original: \"{msg['original']}\", Rephrased: \"{msg['rephrased']}\"\n"
+                history_context += "\n"
             
-            Message: {original_message}"""
+            prompt = f"""Rephrase the following message in the style of a {self.personality}. 
+Keep it very short (within one sentence if possible) and game-appropriate.
+Do not use any emojis or special characters.
+
+{history_context}Current message: "{original_message}" """
             
             if IS_WEB:
                 # Use Pyodide's js fetch for web version
                 try:
-                    return await asyncio.wait_for(self._fetch_openai_web(prompt), timeout)
+                    rephrased_message = await asyncio.wait_for(self._fetch_openai_web(prompt), timeout)
+                    # Add to conversation history
+                    self.add_to_conversation_history(original_message, rephrased_message)
+                    return rephrased_message
                 except asyncio.TimeoutError:
                     logger.error(f"API call timed out after {timeout} seconds")
                     return original_message
@@ -114,6 +144,10 @@ class LLMMessageHandler:
 
                     # Store the complete message
                     self.current_message = complete_message
+                    
+                    # Add to conversation history
+                    self.add_to_conversation_history(original_message, complete_message)
+                    
                     return complete_message
                 except asyncio.TimeoutError:
                     logger.error(f"API call timed out after {timeout} seconds. Switch to default messages.")
