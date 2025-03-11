@@ -89,6 +89,7 @@ async def main():
     try:
         while running:
             # This is needed for Pygbag to work properly - moved to the beginning of the loop
+            # In web environment, this allows other tasks to run
             await asyncio.sleep(0)
             
             # Calculate delta time for smooth animations
@@ -277,13 +278,20 @@ async def main():
 # This is the entry point for Pygbag
 logger.info("Starting game")
 try:
-    asyncio.run(main())
+    if IS_WEB:
+        # In web environment, we need to be careful with asyncio
+        # Use the existing event loop instead of creating a new one
+        loop = asyncio.get_event_loop()
+        loop.create_task(main())
+    else:
+        # In desktop environment, we can use asyncio.run
+        asyncio.run(main())
 except Exception as e:
     logger.error(f"Failed to start game: {str(e)}")
     if not IS_WEB:
         exit()
     else:
-        # In web version, stop the game loop but don't exit
+        # In web environment, stop the game loop but don't exit
         try:
             import js
             js.stop_game()

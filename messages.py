@@ -4,6 +4,7 @@ import threading
 from constants.ui import MESSAGE_CHAR_DELAY, DEFAULT_MESSAGE_DELAY, MESSAGE_TRANSITION_DELAY
 from llm_message_handler import LLMMessageHandler
 from logger import get_module_logger
+from compat import is_web_environment
 
 logger = get_module_logger('messages')
 
@@ -31,10 +32,16 @@ class StatusMessageManager:
         # Initialize LLM message handler
         self.llm_handler = LLMMessageHandler()
         
-        # Set up asyncio event loop in a separate thread
-        self.loop = asyncio.new_event_loop()
-        self.thread = threading.Thread(target=self._run_event_loop, daemon=True)
-        self.thread.start()
+        # Set up asyncio event loop in a separate thread, but only for desktop environment
+        self.is_web = is_web_environment()
+        if not self.is_web:
+            self.loop = asyncio.new_event_loop()
+            self.thread = threading.Thread(target=self._run_event_loop, daemon=True)
+            self.thread.start()
+        else:
+            # In web environment, we'll use the main event loop
+            self.loop = None
+            logger.info("Web environment detected, using main event loop for messages")
         
         # Add a delay between messages in the queue
         self.message_transition_delay = MESSAGE_TRANSITION_DELAY
@@ -63,7 +70,13 @@ class StatusMessageManager:
                     self._load_next_message()
             else:
                 # Process the message through LLM
-                asyncio.run_coroutine_threadsafe(self._process_with_llm(message), self.loop)
+                if self.is_web:
+                    # In web environment, we'll create a task in the main event loop
+                    # The main loop will handle this task during the next await asyncio.sleep(0)
+                    asyncio.create_task(self._process_with_llm(message))
+                else:
+                    # In desktop environment, use the separate event loop
+                    asyncio.run_coroutine_threadsafe(self._process_with_llm(message), self.loop)
     
     async def _process_with_llm(self, original_message):
         """Process the message through LLM"""
