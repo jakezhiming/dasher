@@ -7,3 +7,4 @@ OBSTACLE_BUFFER = 10              # Buffer around obstacles for collision detect
 MIN_PLATFORM_WIDTH = 50           # Minimum width for platforms
 MAX_PLATFORM_WIDTH = 150          # Maximum width for platforms
 PLATFORM_EDGE_BUFFER = 60         # Buffer from edge of pit (per side) 
+MIN_PLATFORM_HORIZONTAL_DISTANCE = 50  # Minimum horizontal distance between platforms 

@@ -28,7 +28,7 @@ except ImportError:
 from constants.messages import PERSONALITIES
 
 # Default proxy URL - can be overridden with environment variable
-PROXY_URL = os.getenv("OPENAI_PROXY_URL", "http://localhost:5000/api/openai")
+PROXY_URL = os.getenv("OPENAI_PROXY_URL", "")
 
 class LLMMessageHandler:
     def __init__(self):
@@ -39,24 +39,23 @@ class LLMMessageHandler:
         
         # For web compatibility with Pygbag
         if not OPENAI_AVAILABLE and not IS_WEB:
-            logger.info("OpenAI module not available and not running in web - LLM features disabled")
+            logger.error("OpenAI module not available and not running in web - LLM features disabled")
         elif IS_WEB:
             logger.info(f"Running in web mode - will use proxy server at {self.proxy_url}")
             # In web mode, we'll use the proxy server
-            if not self.api_key and not self.proxy_url:
+            if not self.proxy_url:
                 logger.warning("Neither API key nor proxy URL available")
                 logger.warning("Game will use original messages without AI rephrasing")
         else:
             # Desktop mode with OpenAI Python SDK
-            if not self.api_key:
-                logger.warning("OPENAI_API_KEY not found in environment variables")
-                logger.warning("Game will use original messages without AI rephrasing")
-            else:
-                self.client = AsyncOpenAI(api_key=self.api_key)
+            self.client = AsyncOpenAI(api_key=self.api_key)
         
         # Choose a random personality at startup
-        self.personality = random.choice(PERSONALITIES)
-        logger.info(f"Starting with personality: {self.personality}")
+        if self.is_available():
+            self.personality = random.choice(PERSONALITIES)
+            logger.info(f"Starting with personality: {self.personality}")
+        else:
+            self.personality = None
         
         # For storing the streaming response
         self.current_message = ""
@@ -68,7 +67,7 @@ class LLMMessageHandler:
     
     def is_available(self):
         """Check if the LLM service is available"""
-        return (self.client is not None) or (IS_WEB and (self.api_key or self.proxy_url))
+        return (self.client is not None) or (IS_WEB and self.proxy_url)
     
     def reset_conversation_history(self):
         """Reset the conversation history for a new game"""
@@ -172,18 +171,9 @@ Do not use any emojis or special characters.
                 "temperature": 0.5
             }
             
-            # Determine which endpoint to use
-            if self.proxy_url:
-                # Use the proxy server
-                url = self.proxy_url
-                headers = {"Content-Type": "application/json"}
-            else:
-                # Direct to OpenAI (likely to fail due to CORS)
-                url = "https://api.openai.com/v1/chat/completions"
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.api_key}"
-                }
+            # Use the proxy server
+            url = self.proxy_url
+            headers = {"Content-Type": "application/json"}
             
             # Make the fetch request using pyfetch with timeout
             response = await pyfetch(
@@ -219,16 +209,16 @@ Do not use any emojis or special characters.
                 error_text = await asyncio.wait_for(response.text(), timeout)
                 logger.error(f"API error: {response.status}")
                 logger.error(f"Error details: {error_text}")
-                self.client = None
+                self.proxy_url = ""
                 return prompt
                 
         except asyncio.TimeoutError:
             logger.error("Timeout occurred during web API operations")
-            self.client = None
+            self.proxy_url = ""
             return prompt
         except Exception as e:
             logger.error(f"Error in web API call: {e}")
-            self.client = None
+            self.proxy_url = ""
             return prompt
     
     def get_current_personality(self):

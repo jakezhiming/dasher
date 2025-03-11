@@ -48,14 +48,6 @@ except Exception as e:
     # Don't exit the game, continue with potentially missing assets
     # This will prevent a black screen in the web version
 
-# Load API key from localStorage if in web environment
-api_key_input = None
-if IS_WEB:
-    load_api_key_from_storage()
-    # Create API key input field
-    api_key_input = ApiKeyInput(50, 50, 400, 30)
-    logger.info("API key input field created")
-
 async def main():
     # Initialize game
     player = Player()
@@ -86,10 +78,6 @@ async def main():
     
     # Log game start
     log_game_start()
-    
-    # Web-specific settings
-    show_api_key_input = IS_WEB and not message_manager.llm_handler.is_available()
-    pending_api_test = False
 
     # Main loop
     running = True
@@ -117,30 +105,6 @@ async def main():
                     # Handle window resize for web compatibility
                     logger.debug(f"Window resized to {event.w}x{event.h}")
                     pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
-                
-                # Handle API key input in web version
-                if IS_WEB and show_api_key_input and api_key_input:
-                    if api_key_input.handle_event(event):
-                        # If API key was saved, update the LLM handler
-                        if api_key_input.saved:
-                            logger.info("API key saved")
-                            message_manager.llm_handler.api_key = api_key_input.text
-                            # Check if we should still show the input
-                            show_api_key_input = not message_manager.llm_handler.is_available()
-                        
-                        # Check if we need to test the API key
-                        if api_key_input.testing:
-                            logger.info("Testing API key")
-                            pending_api_test = True
-
-            # Handle pending API key test
-            if pending_api_test and api_key_input:
-                try:
-                    await api_key_input._test_api_key()
-                    logger.info("API key test completed")
-                except Exception as e:
-                    logger.error(f"API key test failed: {str(e)}")
-                pending_api_test = False
 
             # Update message manager
             try:

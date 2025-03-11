@@ -10,7 +10,8 @@ from constants.difficulty import (
 )
 from constants.level_generation import (
     SEGMENT_LENGTH_MULTIPLIER, GRID_CELL_SIZE, OBSTACLE_BUFFER,
-    MIN_PLATFORM_WIDTH, MAX_PLATFORM_WIDTH, PLATFORM_EDGE_BUFFER
+    MIN_PLATFORM_WIDTH, MAX_PLATFORM_WIDTH, PLATFORM_EDGE_BUFFER,
+    MIN_PLATFORM_HORIZONTAL_DISTANCE
 )
 from constants.game_objects import FLOOR_HEIGHT
 from constants.player import MAX_BACKTRACK_DISTANCE
@@ -85,6 +86,31 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                             return True
         return False
     
+    def is_too_close_to_existing_platforms(x, width):
+        """Check if a new platform would be too close horizontally to existing platforms"""
+        # Since new platforms are generated to the right, we primarily need to check
+        # if the left edge of the new platform (x) is too close to the right edge
+        # of any existing platform (platform.x + platform.width)
+        
+        # Calculate the right edge of the new platform
+        right_edge = x + width
+        
+        # Check against all existing platforms
+        for platform in platforms:
+            # Check for overlapping platforms (where the new platform starts before an existing platform ends)
+            if (x <= platform.x + platform.width and right_edge >= platform.x):
+                return True
+                
+            # Calculate the distance from the right edge of an existing platform to the left edge of the new platform
+            distance = x - (platform.x + platform.width)
+            
+            # If the distance is less than the minimum and positive (meaning the new platform is to the right),
+            # the platforms are too close
+            if 0 <= distance < MIN_PLATFORM_HORIZONTAL_DISTANCE:
+                return True
+                
+        return False
+    
     # Generate floor segments to fill the entire new segment
     current_x = new_x
     while current_x < segment_end_x:
@@ -120,16 +146,22 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                     
                 platform_y = random.randint(100, PLAY_AREA_HEIGHT - 150)
                 new_platform = Platform(platform_x, platform_y, platform_width)
-                platforms.append(new_platform)
-                add_to_collision_grid(new_platform, platform_x, platform_y, platform_width, 20)  # Changed from 10 to 20 to match Platform.height
+                
+                # Only add the platform if it's not too close to existing platforms
+                if not is_too_close_to_existing_platforms(platform_x, platform_width):
+                    platforms.append(new_platform)
+                    add_to_collision_grid(new_platform, platform_x, platform_y, platform_width, 20)  # Changed from 10 to 20 to match Platform.height
             else:
                 # If pit is too narrow for a platform, place a wider platform that extends beyond the pit
                 platform_width = 150
                 platform_x = current_x - pit_width - PLATFORM_EDGE_BUFFER  # Place it starting before the pit
                 platform_y = random.randint(100, PLAY_AREA_HEIGHT - 150)
                 new_platform = Platform(platform_x, platform_y, platform_width + 100)
-                platforms.append(new_platform)
-                add_to_collision_grid(new_platform, platform_x, platform_y, platform_width + 100, 20)  # Changed from 10 to 20
+                
+                # Only add the platform if it's not too close to existing platforms
+                if not is_too_close_to_existing_platforms(platform_x, platform_width + 100):
+                    platforms.append(new_platform)
+                    add_to_collision_grid(new_platform, platform_x, platform_y, platform_width + 100, 20)  # Changed from 10 to 20
         
         # Add a floor segment
         floor_width = random.randint(100, 300)
@@ -148,8 +180,11 @@ def generate_new_segment(player, floors, platforms, obstacles, coins, power_ups,
                 platform_y = random.randint(100, PLAY_AREA_HEIGHT - 100)
                 platform_width = random.randint(50, 150)
                 new_platform = Platform(platform_x, platform_y, platform_width)
-                platforms.append(new_platform)
-                add_to_collision_grid(new_platform, platform_x, platform_y, platform_width, 20)  # Changed from 10 to 20
+                
+                # Only add the platform if it's not too close to existing platforms
+                if not is_too_close_to_existing_platforms(platform_x, platform_width):
+                    platforms.append(new_platform)
+                    add_to_collision_grid(new_platform, platform_x, platform_y, platform_width, 20)  # Changed from 10 to 20
         
         # Only generate obstacles and collectibles if they'll be off-screen
         if current_x > visible_right_edge:

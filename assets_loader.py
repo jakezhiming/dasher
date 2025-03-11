@@ -104,7 +104,7 @@ def load_all_assets():
         global ENABLE_PARALLAX
         
         if IS_WEB:
-            load_background_assets(web=True)
+            load_background_assets()
             ENABLE_PARALLAX = False  # Disable parallax for web version
             
             # Pre-create a cached background with a default width
@@ -150,7 +150,7 @@ def get_font(size):
     font_cache[size] = font
     return font
 
-def load_background_assets(web=False):
+def load_background_assets():
     """Load background layers for parallax scrolling."""
     global background_layers, background_widths
     

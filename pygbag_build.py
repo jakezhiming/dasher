@@ -11,9 +11,7 @@ Requirements:
     - pygbag: pip install pygbag
 """
 
-import os
 import sys
-import shutil
 import subprocess
 import argparse
 
@@ -39,11 +37,7 @@ def create_web_version(proxy_url=None):
             f.write(f"OPENAI_PROXY_URL={proxy_url}\n")
             print(f"Configured to use proxy server at: {proxy_url}")
         else:
-            f.write("# No proxy URL provided - OpenAI API calls may fail due to CORS\n")
-            f.write("# OPENAI_PROXY_URL=http://your-proxy-server.com/api/openai\n")
-        
-        # Include empty API key - will be replaced by user in the web interface
-        f.write("OPENAI_API_KEY=\n")
+            f.write("# No proxy URL provided\n")
     
     print("Created web-compatible .env file")
 
