@@ -1,6 +1,7 @@
 from compat import pygame
 import math
-from constants.colors import BLUE, CYAN, MAGENTA, RED, WHITE, WHITE_OVERLAY, BLACK, GRAY, DARK_GREY, GOLD
+import random
+from constants.colors import BLUE, CYAN, MAGENTA, RED, WHITE, WHITE_OVERLAY, BLACK, GRAY, DARK_GREY, GOLD, LIGHT_BLUE, LIGHT_GREEN
 from constants.screen import PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH
 from constants.ui import HEART_SPRITE_SIZE
 from constants.player import INVINCIBILITY_FROM_DAMAGE_DURATION, INVINCIBILITY_DURATION, SPEED_BOOST_DURATION
@@ -23,16 +24,21 @@ plus_indicator_time = 0
 plus_indicator_duration = 300  # Duration of the "+X" animation in milliseconds
 
 # Score highlight effect variables
-score_highlight_active = False
-score_highlight_time = 0
 score_highlight_duration = 800  # Duration of the score highlight effect in milliseconds
-score_highlight_amount = 0
+bonus_score_highlight_duration = 2000  # Duration for bonus highlights
+score_highlights = []  # List to store multiple active score highlights
 
 # FPS tracking variables
 fps_update_time = 0
 fps_update_interval = 500  # Update FPS every 500ms
 fps_frame_count = 0
 current_fps = 0
+
+# Bonus score variables
+bonus_score_circle_radius = 45
+bonus_score_circle_thickness = 4
+bonus_reached_time = 0
+bonus_reached_active = False
 
 def set_hearts_flash():
     """Set the hearts to flash (call this when player loses a life)."""
@@ -54,12 +60,31 @@ def set_plus_indicator_animation():
     plus_indicator_time = pygame.time.get_ticks()
 
 # New function to trigger the score highlight effect
-def set_score_highlight(amount=50):
-    """Set the score to highlight with an animation effect when coins are collected."""
-    global score_highlight_active, score_highlight_time, score_highlight_amount
-    score_highlight_active = True
-    score_highlight_time = pygame.time.get_ticks()
-    score_highlight_amount = amount
+def set_score_highlight(amount=50, is_bonus=False):
+    """Set the score to highlight with an animation effect when coins are collected or bonus is awarded."""
+    global score_highlights
+    # Create a new highlight object
+    highlight = {
+        'time': pygame.time.get_ticks(),
+        'amount': amount,
+        'is_bonus': is_bonus,
+        'duration': bonus_score_highlight_duration if is_bonus else score_highlight_duration
+    }
+    # Add to the list of active highlights
+    score_highlights.append(highlight)
+
+# New function to trigger the target reached celebration effect
+def set_target_reached_celebration():
+    """Set the target reached celebration effect when player hits the score target early."""
+    global bonus_reached_active, bonus_reached_time
+    bonus_reached_active = True
+    bonus_reached_time = pygame.time.get_ticks()
+
+# Function to reset the target reached celebration effect
+def reset_target_reached_celebration():
+    """Reset the target reached celebration effect."""
+    global bonus_reached_active
+    bonus_reached_active = False
 
 def draw_heart(screen, x, y, size=HEART_SPRITE_SIZE, color=None, flashing=False, is_new=False):
     """Draw a heart at the specified position with the given size."""
@@ -120,8 +145,9 @@ def draw_ui(screen, player):
     # Check if the "+X" indicator animation should be active
     plus_animation_active = (current_time - plus_indicator_time < plus_indicator_duration) and plus_indicator_active
     
-    # Check if the score highlight effect should be active
-    score_highlight_active_now = (current_time - score_highlight_time < score_highlight_duration) and score_highlight_active
+    # Clean up expired score highlights
+    global score_highlights
+    score_highlights = [h for h in score_highlights if current_time - h['time'] < h['duration']]
     
     # Draw hearts for lives at top left
     heart_size = 24  # Adjust size as needed for the sprite
@@ -182,10 +208,11 @@ def draw_ui(screen, player):
     score_text = render_retro_text(f"Score: {player.score}", 18, BLACK)
     score_rect = score_text.get_rect()
     
-    # Apply highlight effect to score if active
-    if score_highlight_active_now:
-        # Calculate animation progress (0.0 to 1.0)
-        progress = (current_time - score_highlight_time) / score_highlight_duration
+    # Check if we have any active score highlights
+    if score_highlights:
+        # Use the most recent highlight for the score text effect
+        latest_highlight = score_highlights[0]
+        progress = min(1.0, (current_time - latest_highlight['time']) / latest_highlight['duration'])
         
         # Split the score text into "Score: " and the actual number
         score_label = render_retro_text("Score: ", 18, BLACK)
@@ -197,6 +224,17 @@ def draw_ui(screen, player):
             min(255, BLACK[1] + flash_intensity),
             min(255, BLACK[2] + flash_intensity)
         )
+        
+        # For bonus highlights, use a gold tint
+        if latest_highlight['is_bonus']:
+            # Mix gold with the flash color
+            gold_factor = 0.5 + 0.5 * math.sin(current_time / 100)  # Pulsing gold effect
+            flash_color = (
+                min(255, flash_color[0]),
+                min(255, int(flash_color[1] * 0.8 + 215 * 0.2 * gold_factor)),  # Add gold tint
+                min(255, int(flash_color[2] * 0.8))  # Reduce blue for gold effect
+            )
+        
         score_number = render_retro_text(f"{player.score}", 18, flash_color)
         
         # Calculate the total width to maintain right alignment
@@ -210,15 +248,167 @@ def draw_ui(screen, player):
         number_x = label_x + score_label.get_width()
         screen.blit(score_number, (number_x, 10))
         
-        # Draw the +50 indicator if we're showing a coin collection
-        if score_highlight_amount > 0:
-            plus_text = render_retro_text(f"+{score_highlight_amount}", 14, GOLD)
-            plus_alpha = int(255 * (1 - progress))
+        # Draw all active +amount indicators
+        for i, highlight in enumerate(score_highlights):
+            highlight_progress = min(1.0, (current_time - highlight['time']) / highlight['duration'])
+            
+            # Choose color based on whether it's a bonus
+            plus_color = GOLD if highlight['is_bonus'] else GOLD
+            plus_text = render_retro_text(f"+{highlight['amount']}", 14, plus_color)
+            
+            # For bonus highlights, make the text larger and add effects
+            if highlight['is_bonus']:
+                # Scale effect based on progress
+                scale_factor = 1.0 + 0.3 * (1.0 - highlight_progress) * math.sin(current_time / 100)
+                scaled_width = int(plus_text.get_width() * scale_factor)
+                scaled_height = int(plus_text.get_height() * scale_factor)
+                plus_text = pygame.transform.scale(plus_text, (scaled_width, scaled_height))
+            
+            plus_alpha = int(255 * (1 - highlight_progress))
             plus_text.set_alpha(plus_alpha)
-            screen.blit(plus_text, (WIDTH - plus_text.get_width() - 10, 35))
+            
+            # Position the text - for bonus, position it more prominently
+            if highlight['is_bonus']:
+                # Position in the same place as regular score increases
+                screen.blit(plus_text, (WIDTH - plus_text.get_width() - 10, 35))
+                
+                # Add sparkle effects around the bonus text
+                if highlight_progress < 0.7:  # Only show sparkles for the first 70% of the animation
+                    for j in range(3):
+                        sparkle_x = WIDTH - plus_text.get_width() / 2 - 10 + random.randint(-20, 20)
+                        sparkle_y = 35 + plus_text.get_height() / 2 + random.randint(-10, 10)
+                        sparkle_size = random.randint(2, 4)
+                        pygame.draw.circle(screen, WHITE, (int(sparkle_x), int(sparkle_y)), sparkle_size)
+            else:
+                # Normal position for regular score increases
+                screen.blit(plus_text, (WIDTH - plus_text.get_width() - 10, 35))
     else:
         # Draw normal score without animation
         screen.blit(score_text, (WIDTH - score_rect.width - 10, 10))
+    
+    # Draw score incentive progress bar and target score if active
+    if player.bonus_score_active:
+        # Calculate progress (0.0 to 1.0)
+        elapsed_time = current_time - player.bonus_score_timer
+        time_progress = min(1.0, elapsed_time / player.bonus_score_period_duration)
+        
+        # Calculate remaining time in seconds
+        remaining_seconds = max(0, (player.bonus_score_period_duration - elapsed_time) // 1000)
+        
+        # Calculate target score and current progress toward target
+        target_score = player.bonus_score_start_score + player.bonus_score_increase_requirement
+        current_score_increase = player.score - player.bonus_score_start_score
+        score_progress = min(1.0, current_score_increase / player.bonus_score_increase_requirement)
+        
+        # Check if target has just been reached (to trigger celebration effect)
+        if score_progress >= 1.0 and not bonus_reached_active:
+            set_target_reached_celebration()
+        
+        # Check if celebration effect is active
+        celebration_active = (current_time - bonus_reached_time < bonus_score_highlight_duration) and bonus_reached_active
+        
+        # Position for the circular timer
+        circle_x = WIDTH - bonus_score_circle_radius - 20
+        circle_y = 100
+        inner_radius = bonus_score_circle_radius - 4
+
+        
+        # Determine colors for the timers
+        time_color = WHITE
+        
+        # Calculate the difference between score progress and time progress
+        # Positive value means score is ahead of time, negative means it's behind
+        progress_difference = score_progress - time_progress
+        
+        # Determine score color based on the difference
+        if progress_difference >= 0.1:  # Score is ahead by a safe margin (20% or more)
+            score_color = LIGHT_GREEN
+        elif progress_difference > 0:   # Score is slightly ahead but not by a safe margin
+            score_color = GOLD
+        else:                           # Score is equal to or behind time progress
+            score_color = RED
+        
+        # Apply celebration or warning effects
+        if celebration_active:
+            # Pulse between gold and white when target is reached
+            pulse_factor = 0.5 + 0.5 * math.sin(current_time / 50)  # Faster pulse for celebration
+            time_color = (
+                255,  # Red always max
+                min(255, 215 + int(40 * pulse_factor)),  # Green pulses between gold and white
+                min(255, int(255 * pulse_factor))  # Blue pulses
+            )
+            score_color = time_color  # Use the same color for both during celebration
+        elif remaining_seconds <= 5:
+            # Pulse between white and red when time is low
+            pulse_factor = 0.5 + 0.5 * math.sin(current_time / 100)  # Oscillate between 0 and 1
+            time_color = (
+                255,  # Red always max
+                max(0, min(255, int(255 * pulse_factor))),  # Green pulses
+                max(0, min(255, int(255 * pulse_factor)))   # Blue pulses
+            )
+            
+            # If score is behind and time is low, make the score color pulse more intensely
+            if progress_difference <= 0:
+                pulse_factor = 0.3 + 0.7 * math.sin(current_time / 80)  # More dramatic pulsing
+                score_color = (
+                    255,  # Red always max
+                    max(0, min(255, int(50 * pulse_factor))),  # Very low green for more intense red
+                    max(0, min(255, int(50 * pulse_factor)))   # Very low blue for more intense red
+                )
+
+        # Background circle
+        pygame.draw.circle(screen, LIGHT_BLUE, (circle_x, circle_y), bonus_score_circle_radius)
+
+        # Draw outer circle (time progress)
+        draw_circular_timer(screen, circle_x, circle_y, bonus_score_circle_radius, 
+                           1.0 - time_progress, time_color, bonus_score_circle_thickness, True)
+        
+        # Draw inner circle (score progress)
+        draw_circular_timer(screen, circle_x, circle_y, inner_radius, 
+                           1.0 - score_progress, score_color, bonus_score_circle_thickness, True)
+
+        # Draw target score in the center
+        target_color = BLACK
+        if celebration_active:
+            # Use gold color with pulsing when target is reached and celebrating
+            pulse_factor = 0.5 + 0.5 * math.sin(current_time / 50)  # Faster pulse for celebration
+            target_color = (
+                255,  # Red always max
+                min(255, 215 + int(40 * pulse_factor)),  # Green pulses
+                min(255, int(255 * pulse_factor))  # Blue pulses
+            )
+        elif score_progress >= 0.9 and score_progress < 1.0:
+            # Pulse between black and gold when close to target
+            pulse_factor = 0.5 + 0.5 * math.sin(current_time / 150)
+            target_color = (
+                int(255 * pulse_factor),  # Red pulses between 0 and 255
+                int((215 + 40 * pulse_factor) * pulse_factor),  # Green pulses between 0 and 255
+                0  # Blue stays at 0 for gold
+            )
+        elif score_progress >= 1.0:
+            # Use gold color when target is reached
+            target_color = GOLD
+            
+        # Render target score text
+        target_text = render_retro_text(f"{target_score}", 14, target_color)
+        target_rect = target_text.get_rect(center=(circle_x, circle_y + 5))
+        screen.blit(target_text, target_rect)
+        
+        # Add a small "target" label above the score
+        target_label = render_retro_text("TARGET", 8, target_color)
+        target_label_rect = target_label.get_rect(center=(circle_x, circle_y - 7))
+        screen.blit(target_label, target_label_rect)
+        
+        # Draw celebration effects if active
+        if celebration_active:
+            # Add sparkle effects around the circle
+            for i in range(5):
+                angle = random.random() * 2 * math.pi
+                distance = bonus_score_circle_radius * 1.2
+                sparkle_x = int(circle_x + math.cos(angle) * distance)
+                sparkle_y = int(circle_y + math.sin(angle) * distance)
+                sparkle_size = random.randint(2, 4)
+                pygame.draw.circle(screen, WHITE, (sparkle_x, sparkle_y), sparkle_size)
     
     # Draw active power-up indicators
     draw_active_powerups(screen, player, current_time)
@@ -420,18 +610,36 @@ def draw_active_powerups(screen, player, current_time):
             remaining_time = 1.0 - min(1.0, (current_time - player.invincible_timer) / INVINCIBILITY_DURATION)
             draw_circular_timer(screen, x_pos, indicator_y, pulse_size + 2, remaining_time, WHITE)
 
-def draw_circular_timer(screen, x, y, radius, percentage, color):
+def draw_circular_timer(screen, x, y, radius, percentage, color, thickness=2, clockwise=True):
     """Draw a circular timer showing remaining time percentage"""
     if percentage <= 0:
         return
     
-    # Draw arc from top (270 degrees) clockwise
+    # Ensure color is a valid RGB tuple with integers in the range [0, 255]
+    if color is None:
+        color = WHITE  # Default to white if color is None
+    
+    # Ensure each color component is an integer in the range [0, 255]
+    try:
+        if len(color) == 3 or len(color) == 4:
+            validated_color = tuple(max(0, min(255, int(c))) for c in color)
+        else:
+            # If color has wrong number of components, use white
+            validated_color = WHITE
+    except (TypeError, ValueError):
+        # If color is not iterable or components can't be converted to int, use white
+        validated_color = WHITE
+    
+    # Draw arc from top (270 degrees) clockwise or anticlockwise
     start_angle = -90  # Start from top (270 degrees in pygame coordinates)
-    end_angle = start_angle + (360 * percentage)
+    if clockwise:
+        end_angle = start_angle + (360 * percentage)
+    else:
+        end_angle = start_angle - (360 * percentage)
     
     # Convert to radians and draw
     rect = pygame.Rect(x - radius, y - radius, radius * 2, radius * 2)
-    pygame.draw.arc(screen, color, rect, math.radians(start_angle), math.radians(end_angle), 2)
+    pygame.draw.arc(screen, validated_color, rect, math.radians(start_angle), math.radians(end_angle), thickness)
 
 def draw_debug_info(screen, player):
     y_pos = 50  # Start position for debug info
@@ -495,6 +703,20 @@ def draw_debug_info(screen, player):
     coin_text = render_retro_text(f"Coins: {player.coin_score}", 12, BLACK)
     screen.blit(coin_text, (10, y_pos))
     y_pos += line_height
+    
+    # Display score incentive system info
+    if player.bonus_score_active:
+        current_time = pygame.time.get_ticks()
+        elapsed_time = current_time - player.bonus_score_timer
+        remaining_time = max(0, (player.bonus_score_period_duration - elapsed_time) // 1000)
+        current_score_increase = player.score - player.bonus_score_start_score
+        
+        incentive_text = render_retro_text(
+            f"Score Incentive: {current_score_increase}/{player.bonus_score_increase_requirement} ({remaining_time}s)", 
+            12, BLACK
+        )
+        screen.blit(incentive_text, (10, y_pos))
+        y_pos += line_height
     
     # Display current LLM personality
     personality_text = render_retro_text(f"Personality: {message_manager.get_current_personality()}", 12, BLACK)

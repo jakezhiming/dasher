@@ -151,3 +151,10 @@ LIFE_MESSAGES = [
     "One more life added to your collection!",
     "Lucky you! An extra life appeared!"
 ]
+
+SCORE_BONUS_MESSAGES = [
+    "Score bonus achieved! +500 points!",
+    "Great job! You earned a score bonus!",
+    "You're on fire! Bonus points awarded!",
+    "Score target reached! Bonus points added!"
+]

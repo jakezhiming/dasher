@@ -7,6 +7,7 @@ DARK_GREY = (64, 64, 64)
 RED = (220, 60, 60)        # Softer red for player
 DARK_RED = (180, 0, 0)     # Darker red for damage invincibility
 GREEN = (0, 100, 0)        # Dark green for obstacles
+LIGHT_GREEN = (150, 255, 150)  # Pastel green for score bonus
 GOLD = (255, 215, 0)     # Gold for coins
 BLUE = (10, 100, 200)      # Blue for background text and speed power-up
 CYAN = (0, 191, 255)       # Deep sky blue for flying power-up

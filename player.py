@@ -8,7 +8,7 @@ from constants.player import (
 )
 from constants.messages import (
     PIT_FALL_MESSAGES, LAST_LIFE_MESSAGES, OBSTACLE_MESSAGES, DEATH_MESSAGES, 
-    SPIKES_MESSAGES, FIRE_MESSAGES, BOMB_MESSAGES, SPEED_MESSAGES, FLYING_MESSAGES, INVINCIBILITY_MESSAGES, LIFE_MESSAGES
+    SPIKES_MESSAGES, FIRE_MESSAGES, BOMB_MESSAGES, SPEED_MESSAGES, FLYING_MESSAGES, INVINCIBILITY_MESSAGES, LIFE_MESSAGES, SCORE_BONUS_MESSAGES
 )
 from constants.screen import PLAY_AREA_HEIGHT
 from constants.colors import DARK_RED, LIGHT_BLUE
@@ -41,6 +41,7 @@ class Player:
         self.lives = INITIAL_LIVES
         self.score = 0
         self.coin_score = 0  # Separate score for coins
+        self.bonus_score = 0  # New variable to track bonus points separately
         self.speed_boost = False
         self.speed_boost_timer = 0
         self.trail_positions = []  # Store previous positions for speed boost trail effect
@@ -53,6 +54,16 @@ class Player:
         self.furthest_right_position = self.x  # Track the furthest right position
         self.prev_x = self.x  # Added to track previous x position
         self.prev_y = self.y  # Added to track previous y position
+        
+        # Score incentive system variables
+        self.bonus_score_active = False
+        self.bonus_score_timer = 0
+        self.bonus_score_period_duration = 30000  # 30 seconds in milliseconds
+        self.bonus_score_start_score = 0
+        self.bonus_score_increase_requirement = 500  # Initial requirement
+        self.bonus_score_increase_max_requirement = 1000  # Maximum requirement
+        self.bonus_score_added = 500  # Bonus for reaching the target
+        self.bonus_score_period_count = 0  # Count of completed periods
         
         # Animation properties
         self.animation_frame = 0
@@ -669,7 +680,49 @@ class Player:
 
         # Update score based on distance and coins
         distance_score = int((self.furthest_right_position - PLAYER_INITIAL_X) / 10)
-        self.score = distance_score + self.coin_score
+        self.score = distance_score + self.coin_score + self.bonus_score
+
+        # Update score incentive system
+        if not self.bonus_score_active and self.vx > 0:
+            self.bonus_score_active = True
+            self.bonus_score_timer = current_time
+            self.bonus_score_start_score = self.score
+        
+        # Check if incentive is active
+        if self.bonus_score_active:
+            elapsed_time = current_time - self.bonus_score_timer
+            score_increase = self.score - self.bonus_score_start_score
+            
+            # Check if target is reached before time is up
+            if score_increase >= self.bonus_score_increase_requirement:
+                # Award bonus immediately
+                self.bonus_score += self.bonus_score_added
+                self.score = distance_score + self.coin_score + self.bonus_score
+                # Trigger score highlight effect with the bonus amount
+                from ui import set_score_highlight
+                set_score_highlight(self.bonus_score_added, is_bonus=True)
+                # Display bonus message
+                from ui import message_manager
+                message_manager.set_message(random.choice(SCORE_BONUS_MESSAGES))
+                
+                # Reset for next incentive period with increased requirement
+                self.bonus_score_timer = current_time
+                self.bonus_score_start_score = self.score
+                self.bonus_score_period_count += 1
+                self.bonus_score_increase_requirement = min(self.bonus_score_increase_max_requirement, self.bonus_score_increase_requirement + (self.bonus_score_period_count * 50))
+                
+                # Reset the target reached celebration effect
+                from ui import reset_target_reached_celebration
+                reset_target_reached_celebration()
+            # If time is up and target wasn't reached, just reset the timer
+            elif elapsed_time >= self.bonus_score_period_duration:
+                # Reset for next incentive period with same requirement (no increase since target wasn't met)
+                self.bonus_score_timer = current_time
+                self.bonus_score_start_score = self.score
+                
+                # Reset the target reached celebration effect
+                from ui import reset_target_reached_celebration
+                reset_target_reached_celebration()
 
         # Update previous y position
         self.prev_y = self.y
@@ -801,4 +854,16 @@ class Player:
         self.speed_boost = False
         self.trail_positions = []  # Clear trail positions
         self.flying = False
-        self.invincible = False 
+        self.invincible = False
+        
+        # Reset score incentive system
+        self.bonus_score_active = False
+        self.bonus_score_timer = 0
+        self.bonus_score_start_score = 0
+        self.bonus_score_increase_requirement = 1000
+        self.bonus_score_period_count = 0
+        self.bonus_score = 0  # Reset bonus score on player reset
+        
+        # Reset the target reached celebration effect
+        from ui import reset_target_reached_celebration
+        reset_target_reached_celebration() 

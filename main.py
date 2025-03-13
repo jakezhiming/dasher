@@ -294,7 +294,7 @@ try:
         # In desktop environment, we can use asyncio.run
         asyncio.run(main())
 except Exception as e:
-    logger.error(f"Failed to start game: {str(e)}")
+    logger.error(f"Failed to start game: {str(e)}", exc_info=True)
     if not IS_WEB:
         exit()
     else:
