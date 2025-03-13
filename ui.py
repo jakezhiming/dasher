@@ -1,6 +1,6 @@
 from compat import pygame
 import math
-from constants.colors import BLUE, CYAN, MAGENTA, RED, WHITE, WHITE_OVERLAY, BLACK, GRAY, DARK_GREY
+from constants.colors import BLUE, CYAN, MAGENTA, RED, WHITE, WHITE_OVERLAY, BLACK, GRAY, DARK_GREY, GOLD
 from constants.screen import PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH
 from constants.ui import HEART_SPRITE_SIZE
 from constants.player import INVINCIBILITY_FROM_DAMAGE_DURATION, INVINCIBILITY_DURATION, SPEED_BOOST_DURATION
@@ -11,6 +11,7 @@ from logger import get_module_logger
 
 logger = get_module_logger('ui')
 
+# Heart pop-in effect variables
 heart_sprite_size = HEART_SPRITE_SIZE
 heart_flash_time = 0
 heart_flash_duration = INVINCIBILITY_FROM_DAMAGE_DURATION 
@@ -20,6 +21,12 @@ new_heart_duration = 300  # Duration of the pop-in effect in milliseconds
 plus_indicator_active = False
 plus_indicator_time = 0
 plus_indicator_duration = 300  # Duration of the "+X" animation in milliseconds
+
+# Score highlight effect variables
+score_highlight_active = False
+score_highlight_time = 0
+score_highlight_duration = 800  # Duration of the score highlight effect in milliseconds
+score_highlight_amount = 0
 
 # FPS tracking variables
 fps_update_time = 0
@@ -45,6 +52,14 @@ def set_plus_indicator_animation():
     global plus_indicator_active, plus_indicator_time
     plus_indicator_active = True
     plus_indicator_time = pygame.time.get_ticks()
+
+# New function to trigger the score highlight effect
+def set_score_highlight(amount=50):
+    """Set the score to highlight with an animation effect when coins are collected."""
+    global score_highlight_active, score_highlight_time, score_highlight_amount
+    score_highlight_active = True
+    score_highlight_time = pygame.time.get_ticks()
+    score_highlight_amount = amount
 
 def draw_heart(screen, x, y, size=HEART_SPRITE_SIZE, color=None, flashing=False, is_new=False):
     """Draw a heart at the specified position with the given size."""
@@ -105,6 +120,9 @@ def draw_ui(screen, player):
     # Check if the "+X" indicator animation should be active
     plus_animation_active = (current_time - plus_indicator_time < plus_indicator_duration) and plus_indicator_active
     
+    # Check if the score highlight effect should be active
+    score_highlight_active_now = (current_time - score_highlight_time < score_highlight_duration) and score_highlight_active
+    
     # Draw hearts for lives at top left
     heart_size = 24  # Adjust size as needed for the sprite
     heart_spacing = 28  # Space between hearts
@@ -163,7 +181,44 @@ def draw_ui(screen, player):
     # Draw score at top right
     score_text = render_retro_text(f"Score: {player.score}", 18, BLACK)
     score_rect = score_text.get_rect()
-    screen.blit(score_text, (WIDTH - score_rect.width - 10, 10))
+    
+    # Apply highlight effect to score if active
+    if score_highlight_active_now:
+        # Calculate animation progress (0.0 to 1.0)
+        progress = (current_time - score_highlight_time) / score_highlight_duration
+        
+        # Split the score text into "Score: " and the actual number
+        score_label = render_retro_text("Score: ", 18, BLACK)
+        
+        # Render the number part with white flash effect
+        flash_intensity = int(255 * (1 - progress))
+        flash_color = (
+            min(255, BLACK[0] + flash_intensity),
+            min(255, BLACK[1] + flash_intensity),
+            min(255, BLACK[2] + flash_intensity)
+        )
+        score_number = render_retro_text(f"{player.score}", 18, flash_color)
+        
+        # Calculate the total width to maintain right alignment
+        total_width = score_label.get_width() + score_number.get_width()
+        
+        # Draw the label part
+        label_x = WIDTH - total_width - 10
+        screen.blit(score_label, (label_x, 10))
+        
+        # Draw the number part right after the label
+        number_x = label_x + score_label.get_width()
+        screen.blit(score_number, (number_x, 10))
+        
+        # Draw the +50 indicator if we're showing a coin collection
+        if score_highlight_amount > 0:
+            plus_text = render_retro_text(f"+{score_highlight_amount}", 14, GOLD)
+            plus_alpha = int(255 * (1 - progress))
+            plus_text.set_alpha(plus_alpha)
+            screen.blit(plus_text, (WIDTH - plus_text.get_width() - 10, 35))
+    else:
+        # Draw normal score without animation
+        screen.blit(score_text, (WIDTH - score_rect.width - 10, 10))
     
     # Draw active power-up indicators
     draw_active_powerups(screen, player, current_time)

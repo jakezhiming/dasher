@@ -617,6 +617,9 @@ class Player:
                 self.coin_score += 50
                 # Create collection effect at the coin's position
                 effect_manager.create_coin_effect(coin.x, coin.y)
+                # Trigger score highlight effect
+                from ui import set_score_highlight
+                set_score_highlight(50)
                 coins.remove(coin)
 
         # Collect power-ups
