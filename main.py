@@ -1,4 +1,5 @@
 import asyncio
+import random
 from compat import pygame, load_dotenv, is_web_environment
 from utils import extract_env_from_file
 
@@ -12,6 +13,9 @@ from constants.colors import BLUE, RED
 from constants.screen import WIDTH, HEIGHT, PLAY_AREA_HEIGHT
 from constants.game_states import (
     GAME_RUNNING, GAME_LOST_MESSAGE, GAME_OVER, GAME_OVER_DISPLAY_DURATION
+)
+from constants.messages import (
+    WELCOME_MESSAGES, NEW_PERSONALITY_MESSAGES, WELCOME_BACK_MESSAGES
 )
 from utils import render_retro_text, draw_background
 from player import Player
@@ -74,7 +78,7 @@ async def main():
     
     # Set an initial welcome message
     try:
-        message_manager.set_message("Welcome to Dasher! Use arrow keys to move and jump.")
+        message_manager.set_message(random.choice(WELCOME_MESSAGES))
     except Exception as e:
         logger.warning(f"Failed to set welcome message: {str(e)}")
     
@@ -250,15 +254,15 @@ async def main():
                 if message_manager.llm_handler.is_available():
                     try:
                         new_personality = message_manager.llm_handler.change_personality()
-                        message_manager.set_message(f"Welcome back! I'm now speaking like a {new_personality}.")
+                        message_manager.set_message(f"{random.choice(NEW_PERSONALITY_MESSAGES)} {new_personality}")
                         logger.info(f"Changed LLM personality to {new_personality}")
                     except Exception as e:
                         # Handle case where personality change fails for some reason
                         logger.warning(f"Failed to change LLM personality: {str(e)}")
-                        message_manager.set_message("Welcome back! Let's play again!")
+                        message_manager.set_message(random.choice(WELCOME_BACK_MESSAGES))
                 else:
                     # LLM service is not available
-                    message_manager.set_message("Welcome back! Let's play again!")
+                    message_manager.set_message(random.choice(WELCOME_BACK_MESSAGES))
 
             # Update the display
             pygame.display.flip()

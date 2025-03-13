@@ -5,6 +5,7 @@ from constants.ui import MESSAGE_CHAR_DELAY, DEFAULT_MESSAGE_DELAY, MESSAGE_TRAN
 from llm_message_handler import LLMMessageHandler
 from logger import get_module_logger
 from compat import is_web_environment
+from constants.messages import DEFAULT_MESSAGES
 
 logger = get_module_logger('messages')
 
@@ -194,19 +195,11 @@ def get_status_message():
     """
     Generate a status message based on the current game state.
     """
-    # Default messages that cycle based on time
-    default_messages = [
-        "Run, jump, and collect coins to increase your score!",
-        "Watch out for obstacles ahead!",
-        "Try to go as far as you can!",
-        "Collect power-ups to gain special abilities!",
-        "Press SPACE to jump. Double-tap to double jump!"
-    ]
-    
+
     # Only show default messages if it's been a while since the last one and no other messages are queued
     if message_manager.can_show_default_message():
         # Get the current default message
-        current_default_message = default_messages[message_manager.default_message_index]
+        current_default_message = DEFAULT_MESSAGES[message_manager.default_message_index]
         
         # Only set the message if it's different from the current and previous messages
         if (current_default_message != message_manager.current_full_message and 
