@@ -101,8 +101,8 @@ class LLMMessageHandler:
                 history_context += "\n"
             
             prompt = f"""Rephrase the following message in the style of a {self.personality}. 
-Keep it very short (within one sentence if possible) and game-appropriate.
 Do not use any emojis or special characters.
+The rephrased messages are shown sequentially for a game, so they should be short and to the point.
 
 {history_context}Current message: "{original_message}" """
             

@@ -257,7 +257,7 @@ async def main():
                 if message_manager.llm_handler.is_available():
                     try:
                         new_personality = message_manager.llm_handler.change_personality()
-                        message_manager.set_message(f"{random.choice(NEW_PERSONALITY_MESSAGES)} {new_personality}")
+                        message_manager.set_message(f"{random.choice(NEW_PERSONALITY_MESSAGES)} {new_personality}.")
                         logger.info(f"Changed LLM personality to {new_personality}")
                     except Exception as e:
                         # Handle case where personality change fails for some reason

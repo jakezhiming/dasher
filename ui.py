@@ -230,8 +230,8 @@ def draw_ui(screen, player):
         prev_line_height = prev_font.get_linesize()
         prev_message_lines = prev_text.get_height() // prev_line_height
         
-        if prev_message_lines >= 3:
-            # If previous message has 3+ lines, only show first 2 lines with "..." at the end
+        if prev_message_lines >= 2:
+            # If previous message has 2+ lines, only show first 1 line with "..." at the end
             words = previous_message.split(' ')
             lines = []
             current_line = []
@@ -246,19 +246,19 @@ def draw_ui(screen, player):
                 else:
                     if current_line:
                         lines.append(' '.join(current_line))
-                        if len(lines) >= 2:  # We have our two lines
+                        if len(lines) >= 1:  # We have our one line
                             break
                     current_line = [word]
             
-            # Add the last line if we don't have 2 yet
-            if current_line and len(lines) < 2:
+            # Add the last line if we don't have 1 yet
+            if current_line and len(lines) < 1:
                 lines.append(' '.join(current_line))
             
             # If we have at least one line
             if lines:
-                # If we have two lines, add "..." to the second line
-                if len(lines) >= 2:
-                    lines[1] = lines[1][:-3] + "..."
+                # If we have one line, add "..." to the line
+                if len(lines) >= 1:
+                    lines[0] = lines[0][:-3] + "..."
                 
                 # Render the truncated message - render each line separately
                 if len(lines) == 1:
@@ -266,14 +266,12 @@ def draw_ui(screen, player):
                 else:  # len(lines) == 2
                     # Create a surface to hold both lines
                     line1_surf = prev_font.render(lines[0], True, DARK_GREY)
-                    line2_surf = prev_font.render(lines[1], True, DARK_GREY)
                     
                     total_height = prev_line_height * 2
                     prev_text = pygame.Surface((max_message_width, total_height), pygame.SRCALPHA)
                     
                     # Blit each line onto the surface
                     prev_text.blit(line1_surf, (0, 0))
-                    prev_text.blit(line2_surf, (0, prev_line_height))
         
         screen.blit(prev_text, (60, PLAY_AREA_HEIGHT + STATUS_BAR_HEIGHT - 35))
 

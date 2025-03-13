@@ -47,7 +47,7 @@ PERSONALITIES = [
 ]
 
 DEFAULT_MESSAGES = [
-    "Run, jump, and collect coins to increase your score!",
+    "Dash, jump, and collect coins to increase your score!",
     "Watch out for obstacles ahead!",
     "Try to go as far as you can!",
     "Collect power-ups to gain special abilities!",
@@ -55,9 +55,9 @@ DEFAULT_MESSAGES = [
 ]
 
 WELCOME_MESSAGES = [
-    "Welcome to Dasher! Use arrow keys to move and jump.",
+    "Welcome to Dasher! Use arrow keys to dash and jump.",
     "Ready to dash? Arrow keys control your movement!",
-    "Let's get dashing! Use arrows to run and leap!", 
+    "Let's get dashing! Use arrows to dash and leap!", 
     "Time to play Dasher! Control with arrow keys!"
 ]
 
