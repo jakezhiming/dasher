@@ -117,9 +117,9 @@ def configure_from_env():
     """Configure the logger based on environment variables."""
     import os
     
-    # Get log level from environment variable, default to INFO
-    log_level_name = os.getenv('LOG_LEVEL', 'INFO')
-    log_level = getattr(logging, log_level_name, logging.INFO)
+    # Get log level from environment variable, default to DEBUG
+    log_level_name = os.getenv('LOG_LEVEL', 'DEBUG')
+    log_level = getattr(logging, log_level_name, logging.DEBUG)
     
     # Get log to file setting from environment variable, default to True
     log_to_file = os.getenv('LOG_TO_FILE', 'True').lower() in ('true', '1', 't')

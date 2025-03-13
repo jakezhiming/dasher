@@ -10,25 +10,24 @@ Usage:
     python proxy_server.py [--port PORT] [--host HOST] [--log-file LOG_FILE]
 
 Requirements:
-    - flask
-    - flask-cors
-    - requests
+    - quart
+    - quart-cors
+    - httpx
 """
 
 import os
 import argparse
-import requests
 import logging
 import time
+import asyncio
 from datetime import datetime
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from werkzeug.middleware.proxy_fix import ProxyFix
+import httpx
+from quart import Quart, request, jsonify
+from quart_cors import cors
 
-# Create Flask app
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
-app.wsgi_app = ProxyFix(app.wsgi_app)  # Fix for running behind a proxy
+# Create Quart app (async Flask alternative)
+app = Quart(__name__)
+app = cors(app)  # Enable CORS for all routes
 
 # Set up logging
 logging.basicConfig(
@@ -64,8 +63,8 @@ def check_rate_limit():
     return True
 
 @app.route('/api/openai', methods=['POST'])
-def proxy_openai():
-    """Proxy requests to OpenAI API"""
+async def proxy_openai():
+    """Proxy requests to OpenAI API asynchronously"""
     if not OPENAI_API_KEY:
         logger.error("API key not configured on server")
         return jsonify({"error": "API key not configured on server"}), 500
@@ -76,23 +75,24 @@ def proxy_openai():
         return jsonify({"error": "Rate limit exceeded. Please try again later."}), 429
     
     # Get request data
-    data = request.json
+    data = await request.get_json()
     client_ip = request.remote_addr
     
     # Log the request (without sensitive data)
     logger.info(f"Request from {client_ip} - Model: {data.get('model', 'unknown')}")
     
-    # Forward request to OpenAI
+    # Forward request to OpenAI asynchronously
     try:
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {OPENAI_API_KEY}"
-            },
-            json=data,
-            timeout=30  # Add timeout to prevent hanging requests
-        )
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {OPENAI_API_KEY}"
+                },
+                json=data,
+                timeout=30  # Add timeout to prevent hanging requests
+            )
         
         # Log the response status
         logger.info(f"OpenAI API response: {response.status_code}")
@@ -100,11 +100,11 @@ def proxy_openai():
         # Return the response from OpenAI
         return response.json(), response.status_code
     
-    except requests.exceptions.Timeout:
+    except httpx.TimeoutException:
         logger.error("Request to OpenAI API timed out")
         return jsonify({"error": "Request to OpenAI API timed out"}), 504
     
-    except requests.exceptions.RequestException as e:
+    except httpx.RequestError as e:
         logger.error(f"Error forwarding request to OpenAI: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
@@ -113,11 +113,11 @@ def proxy_openai():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/test', methods=['GET'])
-def test():
+async def test():
     """Test endpoint to verify the server is running"""
     return jsonify({
         "status": "ok", 
-        "message": "OpenAI proxy server is running",
+        "message": "OpenAI proxy server is running (async)",
         "time": datetime.now().isoformat(),
         "api_key_configured": bool(OPENAI_API_KEY)
     })
@@ -141,13 +141,18 @@ def main():
     # Set up file logging if specified
     setup_file_logging(args.log_file)
     
-    logger.info(f"Starting OpenAI proxy server on {args.host}:{args.port}")
+    logger.info(f"Starting async OpenAI proxy server on {args.host}:{args.port}")
     logger.info("Use this server to avoid CORS issues when making OpenAI API calls from the web version")
     logger.info(f"Proxy endpoint: http://{args.host}:{args.port}/api/openai")
     logger.info(f"Test endpoint: http://{args.host}:{args.port}/api/test")
     
-    # Run the Flask app
-    app.run(host=args.host, port=args.port)
+    # Run the Quart app with hypercorn
+    import hypercorn.asyncio
+    from hypercorn.config import Config
+    
+    config = Config()
+    config.bind = [f"{args.host}:{args.port}"]
+    asyncio.run(hypercorn.asyncio.serve(app, config))
 
 if __name__ == "__main__":
     main() 

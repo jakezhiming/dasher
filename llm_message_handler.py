@@ -111,7 +111,7 @@ The rephrased messages are shown sequentially for a game, so they should be shor
                 try:
                     complete_message = await asyncio.wait_for(self._fetch_openai_web(prompt, original_message), timeout)
                 except asyncio.TimeoutError:
-                    logger.error(f"API call timed out after {timeout} seconds")
+                    logger.error(f"Proxy Server API call timed out after {timeout} seconds")
                     return original_message
             else:
                 # Use OpenAI Python SDK for desktop version
@@ -158,63 +158,44 @@ The rephrased messages are shown sequentially for a game, so they should be shor
     async def _fetch_openai_web(self, prompt, original_message, timeout=5):
         """Use JavaScript's fetch to call OpenAI API in web environment"""
         try:
-            # Check if proxy URL is configured
-            if not self.proxy_url:
-                # Try to get the proxy URL from JavaScript
-                try:
-                    from js import window
-                    if hasattr(window, 'getProxyUrl'):
-                        proxy_url = window.getProxyUrl()
-                        if proxy_url:
-                            self.proxy_url = str(proxy_url)
-                            logger.info(f"Got proxy URL from JavaScript: {self.proxy_url}")
-                except Exception as e:
-                    logger.error(f"Failed to get proxy URL from JavaScript: {e}")
-            
-            # Use the new JavaScript interface to fetch LLM response
-            try:
-                from js import window  # Pyodide's interface to JavaScript
+            from js import window  # Pyodide's interface to JavaScript
 
-                if not hasattr(window, 'fetchLLMResponse'):
-                    logger.error("fetchLLMResponse is not defined in JavaScript")
-                    return original_message
-
-                if not callable(window.fetchLLMResponse):
-                    logger.error(f"fetchLLMResponse exists but is not callable: {window.fetchLLMResponse}")
-                    return original_message
-                
-                payload = json.dumps({
-                    "model": "gpt-4o-mini",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 100,
-                    "temperature": 0.5
-                })
-
-                # Call JavaScript function to make the API request
-                window.fetchLLMResponse(payload)
-                
-                # Wait briefly for the response
-                llm_response = None
-                for _ in range(int(timeout/0.1)):  # timeout
-                    await asyncio.sleep(0.1)
-                    if hasattr(window, 'llmResponse'):
-                        llm_response = window.llmResponse
-                        del window.llmResponse  # Clear it after use
-                        break
-                
-                if llm_response:
-                    logger.info("Successfully received response from LLM API")
-                    return llm_response
-                else:
-                    logger.error(f"No response received from Proxy Server after timeout of {timeout} seconds")
-                    return original_message
-                
-            except Exception as e:
-                logger.error(f"Error making API call: {e}")
+            if not hasattr(window, 'fetchLLMResponse'):
+                logger.error("fetchLLMResponse is not defined in JavaScript")
                 return original_message
+
+            if not callable(window.fetchLLMResponse):
+                logger.error(f"fetchLLMResponse exists but is not callable: {window.fetchLLMResponse}")
+                return original_message
+            
+            payload = json.dumps({
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 100,
+                "temperature": 0.5
+            })
+
+            # Call JavaScript function to make the API request
+            window.fetchLLMResponse(payload)
+            
+            # Use asyncio.wait_for to properly enforce the timeout   
+            async def wait_for_response():
+                while True:
+                    if hasattr(window, 'llmResponse'):
+                        response = window.llmResponse
+                        if response:
+                            del window.llmResponse  # Clear it after use
+                            return response
+                    await asyncio.sleep(0.1)
+            
+            llm_response = await asyncio.wait_for(wait_for_response(), timeout)
+            
+            if llm_response:
+                logger.info("Successfully received response from Proxy Server")
+                return llm_response
                 
         except Exception as e:
-            logger.error(f"Error in _fetch_openai_web: {e}")
+            logger.error(f"Error making Proxy Server API call: {e}")
             return original_message
     
     def get_current_personality(self):
