@@ -346,15 +346,6 @@ def draw_ui(screen, player):
                 max(0, min(255, int(255 * pulse_factor))),  # Green pulses
                 max(0, min(255, int(255 * pulse_factor)))   # Blue pulses
             )
-            
-            # If score is behind and time is low, make the score color pulse more intensely
-            if progress_difference <= 0:
-                pulse_factor = 0.3 + 0.7 * math.sin(current_time / 80)  # More dramatic pulsing
-                score_color = (
-                    255,  # Red always max
-                    max(0, min(255, int(50 * pulse_factor))),  # Very low green for more intense red
-                    max(0, min(255, int(50 * pulse_factor)))   # Very low blue for more intense red
-                )
 
         # Background circle
         pygame.draw.circle(screen, LIGHT_BLUE, (circle_x, circle_y), bonus_score_circle_radius)
@@ -385,9 +376,15 @@ def draw_ui(screen, player):
                 int((215 + 40 * pulse_factor) * pulse_factor),  # Green pulses between 0 and 255
                 0  # Blue stays at 0 for gold
             )
-        elif score_progress >= 1.0:
-            # Use gold color when target is reached
-            target_color = GOLD
+        # Add warning effect for target text when score is behind and time is low
+        elif remaining_seconds <= 5 and progress_difference <= 0:
+            # Make target text pulse red when score is behind and time is low
+            pulse_factor = 0.5 + 0.5 * math.sin(current_time / 100)  # Oscillate between 0 and 1
+            target_color = (
+                255,  # Red always max
+                max(0, min(255, int(255 * pulse_factor))),  # Green pulses
+                max(0, min(255, int(255 * pulse_factor)))   # Blue pulses
+            )
             
         # Render target score text
         target_text = render_retro_text(f"{target_score}", 14, target_color)
