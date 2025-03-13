@@ -230,6 +230,9 @@ async def main():
                 score_text = render_retro_text(f"Final Score: {player.score}", 24, BLUE)
                 score_rect = score_text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2))
                 screen.blit(score_text, score_rect)
+                
+                # Draw UI to ensure status messages continue to be displayed
+                draw_ui(screen, player)
             
             elif game_state == GAME_OVER:
                 # Reset the game
