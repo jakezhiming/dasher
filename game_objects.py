@@ -1,10 +1,9 @@
-from compat import pygame
+from compat import pygame, random
 from constants.colors import GREEN, RED
 from constants.screen import PLAY_AREA_HEIGHT, WIDTH
 from constants.game_objects import COIN_SIZE, POWERUP_SIZE, DEFAULT_OBSTACLE_SIZE
 from constants.game_objects import FLOOR_HEIGHT
 import math
-import random
 import input_handler
 import assets_loader
 from logger import get_module_logger

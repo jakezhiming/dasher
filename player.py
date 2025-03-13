@@ -1,5 +1,4 @@
-from compat import pygame
-import random
+from compat import pygame, random
 from constants.player import (
     PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_INITIAL_X, PLAYER_INITIAL_Y,
     GRAVITY, FLYING_GRAVITY_REDUCTION, INVINCIBILITY_DURATION, INVINCIBILITY_FROM_DAMAGE_DURATION, 
@@ -55,7 +54,7 @@ class Player:
         self.prev_x = self.x  # Added to track previous x position
         self.prev_y = self.y  # Added to track previous y position
         
-        # Score incentive system variables
+        # Bonus score system variables
         self.bonus_score_active = False
         self.bonus_score_timer = 0
         self.bonus_score_period_duration = 30000  # 30 seconds in milliseconds
@@ -682,13 +681,13 @@ class Player:
         distance_score = int((self.furthest_right_position - PLAYER_INITIAL_X) / 10)
         self.score = distance_score + self.coin_score + self.bonus_score
 
-        # Update score incentive system
+        # Update bonus score system
         if not self.bonus_score_active and self.vx > 0:
             self.bonus_score_active = True
             self.bonus_score_timer = current_time
             self.bonus_score_start_score = self.score
         
-        # Check if incentive is active
+        # Check if bonus score system is active
         if self.bonus_score_active:
             elapsed_time = current_time - self.bonus_score_timer
             score_increase = self.score - self.bonus_score_start_score
@@ -705,7 +704,7 @@ class Player:
                 from ui import message_manager
                 message_manager.set_message(random.choice(SCORE_BONUS_MESSAGES))
                 
-                # Reset for next incentive period with increased requirement
+                # Reset for next bonus score period with increased requirement
                 self.bonus_score_timer = current_time
                 self.bonus_score_start_score = self.score
                 self.bonus_score_period_count += 1
@@ -716,7 +715,7 @@ class Player:
                 reset_target_reached_celebration()
             # If time is up and target wasn't reached, just reset the timer
             elif elapsed_time >= self.bonus_score_period_duration:
-                # Reset for next incentive period with same requirement (no increase since target wasn't met)
+                # Reset for next bonus score period with same requirement (no increase since target wasn't met)
                 self.bonus_score_timer = current_time
                 self.bonus_score_start_score = self.score
                 
@@ -856,7 +855,7 @@ class Player:
         self.flying = False
         self.invincible = False
         
-        # Reset score incentive system
+        # Reset bonus score system
         self.bonus_score_active = False
         self.bonus_score_timer = 0
         self.bonus_score_start_score = 0

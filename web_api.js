@@ -107,3 +107,31 @@ window.fetchLLMResponse = async function(url, payload_json) {
         window.llmResponse = "Error: " + error.message;
     }
 };
+
+// Create a namespace for our web APIs
+window.DASHER_WEB_API = {
+    // Provide a better random number generator for the web version
+    getRandomNumber: function() {
+        // Use the browser's crypto API for better randomness
+        const array = new Uint32Array(1);
+        window.crypto.getRandomValues(array);
+        // Return a number between 0 and 1
+        return array[0] / 4294967295;
+    },
+    
+    // Function to get multiple random numbers
+    getRandomNumbers: function(count) {
+        const array = new Uint32Array(count);
+        window.crypto.getRandomValues(array);
+        // Convert to array of numbers between 0 and 1
+        return Array.from(array).map(x => x / 4294967295);
+    },
+    
+    // Log that the web API is loaded
+    init: function() {
+        console.log("Dasher Web API loaded - providing crypto-based random number generation");
+    }
+};
+
+// Initialize the API
+window.DASHER_WEB_API.init();

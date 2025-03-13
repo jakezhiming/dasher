@@ -1,6 +1,6 @@
 import asyncio
-import random
-from compat import pygame, load_dotenv, is_web_environment
+from compat import pygame, load_dotenv, is_web_environment, IS_WEB
+from compat import random
 from utils import extract_env_from_file
 
 if is_web_environment():
@@ -29,10 +29,8 @@ from logger import logger, log_game_start, log_game_over
 from web_ui import is_web_environment
 
 if is_web_environment():
-    IS_WEB = True
     logger.info("Web environment detected")
 else:
-    IS_WEB = False
     logger.info("Desktop environment detected")
 
 # Initialize Pygame

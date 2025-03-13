@@ -1,6 +1,6 @@
 import os
 import json
-import random
+from compat import random
 import asyncio
 from logger import get_module_logger
 
@@ -191,8 +191,13 @@ The rephrased messages are shown sequentially for a game, so they should be shor
             llm_response = await asyncio.wait_for(wait_for_response(), timeout)
             
             if llm_response:
-                logger.info("Successfully received response from Proxy Server")
-                return llm_response
+                if "Failed to fetch" in llm_response:
+                    logger.error("Failed to fetch response from Proxy Server. Switch to default messages.")
+                    self.proxy_url = None
+                    return original_message
+                else:
+                    logger.info("Successfully received response from Proxy Server")
+                    return llm_response
                 
         except Exception as e:
             logger.error(f"Error making Proxy Server API call: {e}")

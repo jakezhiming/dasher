@@ -1,6 +1,5 @@
-from compat import pygame
+from compat import pygame, random
 import math
-import random
 from constants.colors import BLUE, CYAN, MAGENTA, RED, WHITE, WHITE_OVERLAY, BLACK, GRAY, DARK_GREY, GOLD, LIGHT_BLUE, LIGHT_GREEN
 from constants.screen import PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH
 from constants.ui import HEART_SPRITE_SIZE
@@ -286,7 +285,7 @@ def draw_ui(screen, player):
         # Draw normal score without animation
         screen.blit(score_text, (WIDTH - score_rect.width - 10, 10))
     
-    # Draw score incentive progress bar and target score if active
+    # Draw bonus score progress and target score if active
     if player.bonus_score_active:
         # Calculate progress (0.0 to 1.0)
         elapsed_time = current_time - player.bonus_score_timer
@@ -308,8 +307,8 @@ def draw_ui(screen, player):
         celebration_active = (current_time - bonus_reached_time < bonus_score_highlight_duration) and bonus_reached_active
         
         # Position for the circular timer
-        circle_x = WIDTH - bonus_score_circle_radius - 20
-        circle_y = 100
+        circle_x = WIDTH - bonus_score_circle_radius - 30
+        circle_y = 110
         inner_radius = bonus_score_circle_radius - 4
 
         
@@ -701,18 +700,18 @@ def draw_debug_info(screen, player):
     screen.blit(coin_text, (10, y_pos))
     y_pos += line_height
     
-    # Display score incentive system info
+    # Display bonus score system info
     if player.bonus_score_active:
         current_time = pygame.time.get_ticks()
         elapsed_time = current_time - player.bonus_score_timer
         remaining_time = max(0, (player.bonus_score_period_duration - elapsed_time) // 1000)
         current_score_increase = player.score - player.bonus_score_start_score
         
-        incentive_text = render_retro_text(
-            f"Score Incentive: {current_score_increase}/{player.bonus_score_increase_requirement} ({remaining_time}s)", 
+        bonus_text = render_retro_text(
+            f"Bonus Score Target: {current_score_increase}/{player.bonus_score_increase_requirement} ({remaining_time}s)", 
             12, BLACK
         )
-        screen.blit(incentive_text, (10, y_pos))
+        screen.blit(bonus_text, (10, y_pos))
         y_pos += line_height
     
     # Display current LLM personality

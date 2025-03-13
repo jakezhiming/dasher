@@ -1,5 +1,4 @@
-import random
-from compat import pygame
+from compat import pygame, random
 from constants.screen import PLAY_AREA_HEIGHT
 from constants.difficulty import (
     DIFFICULTY_START_DISTANCE, DIFFICULTY_MAX_DISTANCE,
