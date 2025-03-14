@@ -2,9 +2,8 @@ import os
 from compat import pygame
 from constants.paths import FONT_PATH
 from assets_loader import (get_font, get_background_layers, get_background_widths, 
-                          create_cached_background, get_cached_background, IS_WEB)
+                          create_cached_background, get_cached_background, IS_WEB, USE_CACHED_BACKGROUND)
 from logger import get_module_logger
-from config import USE_CACHED_BACKGROUND
 
 logger = get_module_logger('utils')
 
@@ -155,25 +154,4 @@ def draw_background(screen, camera_x=0):
             
         # Draw to the left if needed (for when the offset is positive)
         if layer_offset > 0:
-            screen.blit(layer, (layer_offset - background_widths[i], 0)) 
-
-def extract_env_from_file(file_path):
-    """Extract environment variables directly from a .env file."""
-    try:
-        with open(file_path, 'r') as f:
-            env_content = f.read()
-            
-            # Extract variables using regex
-            import re
-            env_vars = re.findall(r'^([A-Za-z0-9_]+)\s*=\s*([^\n#]+)', env_content, re.MULTILINE)
-            
-            for key, value in env_vars:
-                # Clean the value (remove quotes and whitespace)
-                value = value.strip().strip('"\'')
-                # Set in environment
-                os.environ[key] = value
-
-            return True
-    except Exception as e:
-        logger.error(f"Error extracting variables from {file_path}: {e}")
-        return False
+            screen.blit(layer, (layer_offset - background_widths[i], 0))

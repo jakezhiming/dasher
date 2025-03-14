@@ -1,11 +1,8 @@
 import asyncio
 from compat import pygame, load_dotenv, is_web_environment, IS_WEB
 from compat import random
-from utils import extract_env_from_file
 
-if is_web_environment():
-    extract_env_from_file(".env.web")
-else:
+if not IS_WEB:
     load_dotenv()
 
 from assets_loader import load_all_assets

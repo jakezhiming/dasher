@@ -8,11 +8,11 @@ window.llmResponse = null;
 
 window.getProxyUrl = function() {
     if (window.ENV && window.ENV.OPENAI_PROXY_URL) {
-        console.log("Using proxy URL from environment variables:", window.ENV.OPENAI_PROXY_URL);
+        console.log("Using proxy URL from configuration:", window.ENV.OPENAI_PROXY_URL);
         return window.ENV.OPENAI_PROXY_URL;
     }
     
-    // Add a fallback mechanism to check if the environment.js file is loaded
+    // Check if web_config.js has been loaded properly
     console.log("No proxy URL found in window.ENV. Current window.ENV:", window.ENV);
     
     // Check if we're in a development environment and use a default URL
@@ -22,7 +22,7 @@ window.getProxyUrl = function() {
         return defaultProxyUrl;
     }
     
-    console.log("No proxy URL found in environment variables and not in development mode");
+    console.log("No proxy URL found in configuration and not in development mode");
     return null;
 };
 
@@ -36,7 +36,7 @@ window.fetchLLMResponse = async function(url, payload_json) {
     if (!url) {
         url = window.getProxyUrl();
         if (!url) {
-            console.error("No proxy URL provided and none found in environment variables");
+            console.error("No proxy URL provided and none found in configuration");
             window.llmResponse = "Error: No proxy URL available";
             return;
         }

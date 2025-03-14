@@ -41,6 +41,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     logger.warning("OPENAI_API_KEY not found in environment variables")
     logger.warning("Proxy server will not work without an API key")
+    exit()
 
 # Simple rate limiting
 request_timestamps = []

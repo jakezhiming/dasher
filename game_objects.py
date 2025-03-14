@@ -136,7 +136,7 @@ class Obstacle:
         self.explosion_time = 0
         self.explosion_started = False
         self.explosion_frame_index = 0
-        self.explosion_timer = 5.0  # 5 seconds until explosion
+        self.explosion_timer = random.uniform(2.0, 5.0)
         self.timer_started = False  # Flag to track if the bomb timer has started
         self.active = True  # Whether the obstacle is active (not exploded)
         self.visible_once = False  # Flag to track if the bomb has been visible

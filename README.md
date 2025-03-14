@@ -130,6 +130,48 @@ This game was developed using:
    ```
    Then open a browser and go to: http://localhost:8000
 
+### Web Configuration
+
+The web version of Dasher uses a single configuration file called `web_config.js` to manage all web-specific settings. This simplifies the configuration process and makes it easier to deploy the game.
+
+#### Setting Up web_config.js
+
+1. Create a `web_config.js` file in the root directory of your project with the following structure:
+
+```javascript
+/**
+ * Web Configuration for Dasher Game
+ */
+
+// Initialize the global ENV object
+window.ENV = window.ENV || {};
+
+// API Configuration
+window.ENV.OPENAI_PROXY_URL = "http://localhost:5000/api/openai";
+
+// Game Configuration
+window.ENV.GAME_TITLE = "Dasher";
+window.ENV.DEBUG_MODE = false;
+
+// Add any other configuration settings your game needs
+// window.ENV.SOME_SETTING = "some value";
+
+// Log that configuration has been loaded
+console.log("Web configuration loaded:", window.ENV);
+```
+
+2. Customize the settings as needed for your deployment.
+
+3. When you run the build script, this file will be automatically included in the web build.
+
+#### Configuration Options
+
+- **OPENAI_PROXY_URL**: URL of your OpenAI proxy server (for AI-powered messages)
+- **GAME_TITLE**: Title of the game (displayed in the browser tab)
+- **DEBUG_MODE**: Enable/disable debug mode
+
+You can add any other configuration options your game needs by adding them to the `window.ENV` object.
+
 ### Using OpenAI API in Web Version
 
 The web version supports OpenAI API integration for AI-powered messages. There are two ways to use this feature:
@@ -155,7 +197,12 @@ This approach is more reliable and secure, as it avoids CORS issues and keeps yo
 
 3. Build the game with the proxy URL:
    ```bash
-   python pygbag_build.py --proxy-url http://localhost:5000/api/openai
+   python pygbag_build.py
+   ```
+   
+   The proxy URL should be configured in your `web_config.js` file:
+   ```javascript
+   window.ENV.OPENAI_PROXY_URL = "http://localhost:5000/api/openai";
    ```
 
 4. Test the proxy server:
@@ -173,7 +220,9 @@ This approach is simpler but may encounter CORS issues in some browsers.
    python pygbag_build.py
    ```
 
-2. When playing the game in the browser, you'll see an API key input field where you can enter your OpenAI API key.
+2. Configure your `web_config.js` to use direct API access or provide a UI for entering the API key.
+
+3. When playing the game in the browser, you'll see an API key input field where you can enter your OpenAI API key.
    - The key is stored only in your browser's localStorage
    - It's sent directly to OpenAI's API (may encounter CORS issues on some browsers)
    - You can test your API key by clicking the "Test Key" button
@@ -234,9 +283,14 @@ If you're using the proxy server approach, you'll need to deploy the proxy serve
    }
    ```
 
-4. When building the game, use the public URL of your proxy server:
+4. When building the game, configure the proxy URL in your `web_config.js` file:
+   ```javascript
+   window.ENV.OPENAI_PROXY_URL = "https://your-domain.com/api/openai";
+   ```
+   
+   Then build the game:
    ```bash
-   python pygbag_build.py --proxy-url https://your-domain.com/api/openai
+   python pygbag_build.py
    ```
 
 ### Security Considerations

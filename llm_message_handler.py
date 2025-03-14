@@ -2,6 +2,7 @@ import os
 import json
 from compat import random
 import asyncio
+from constants.messages import PERSONALITIES
 from logger import get_module_logger
 
 logger = get_module_logger('llm_message_handler')
@@ -26,10 +27,12 @@ except ImportError as e:
     IS_WEB = False
     logger.error(f"Failed to import is_web_environment: {e}")
 
-from constants.messages import PERSONALITIES
+if IS_WEB:
+    OPENAI_PROXY_URL = True
+else:
+    OPENAI_PROXY_URL = False
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_PROXY_URL = os.getenv("OPENAI_PROXY_URL", "")
 
 class LLMMessageHandler:
     def __init__(self):
