@@ -79,7 +79,7 @@ async def proxy_openai():
                     "Authorization": f"Bearer {OPENAI_API_KEY}"
                 },
                 json=data,
-                timeout=5
+                timeout=10
             )
         
         # Log the response status

@@ -1,7 +1,6 @@
 import asyncio
 import pygame
-from compat import IS_WEB
-from compat import random
+from compat import random, IS_WEB
 
 if not IS_WEB:
     from dotenv import load_dotenv
