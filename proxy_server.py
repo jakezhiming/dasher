@@ -52,6 +52,12 @@ def check_rate_limit():
     request_timestamps.append(current_time)
     return True
 
+@app.route('/ping', methods=['GET'])
+async def ping():
+    """Ping endpoint for monitoring"""
+    logger.info("Ping received")
+    return {"status": "ok"}, 200
+
 @app.route('/api/openai', methods=['POST'])
 async def proxy_openai():
     if request.headers.get("X-API-Token") != PROXY_TOKEN:
@@ -110,6 +116,7 @@ def main():
     logger.info(f"CORS configured with allow_origin: {CORS_ALLOW_ORIGIN}")
     logger.info(f"Rate limit configured: {MAX_REQUESTS_PER_MINUTE} requests per minute")
     logger.info(f"Proxy endpoint: http://{args.host}:{args.port}/api/openai")
+    logger.info(f"Ping endpoint: http://{args.host}:{args.port}/ping")
     
     # Run the Quart app with hypercorn
     import hypercorn.asyncio

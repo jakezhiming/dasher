@@ -287,10 +287,3 @@ except Exception as e:
     logger.error(f"Failed to start game: {str(e)}", exc_info=True)
     if not IS_WEB:
         exit()
-    else:
-        # In web environment, stop the game loop but don't exit
-        try:
-            import js
-            js.stop_game()
-        except ImportError:
-            pass
