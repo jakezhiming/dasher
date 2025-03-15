@@ -184,8 +184,8 @@ The rephrased messages are shown sequentially for a game, so they should be shor
             llm_response = await asyncio.wait_for(wait_for_response(), timeout)
             
             if llm_response:
-                if "Failed to fetch" in llm_response:
-                    logger.error("Failed to fetch response from Proxy Server. Switch to default messages.")
+                if "DasherError" in llm_response:
+                    logger.error(f"Proxy Server returned an error: {llm_response}. Switch to default messages.")
                     self.proxy_url = None
                     return original_message
                 else:

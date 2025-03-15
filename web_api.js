@@ -5,6 +5,21 @@
  */
 
 const ProxyUrl = "http://localhost:5000/api/openai";
+const _tokenParts = [
+    "MWEzZWI3OTkt",
+    "OWQxMC00ZjQ2",
+    "LWE1MGEtMzJj",
+    "YmRjYjVhZWQy"
+];
+
+function getProxyToken() {
+    try {
+        return atob(_tokenParts.join(''));
+    } catch (e) {
+        console.error("Failed to decode token:", e);
+        return null;
+    }
+}
 
 window.llmResponse = null;
 
@@ -13,7 +28,7 @@ window.fetchLLMResponse = async function(payload_json) {
         // Validate payload_json
         if (!payload_json || typeof payload_json !== 'string') {
             console.error("Invalid payload_json:", payload_json);
-            window.llmResponse = "Error: Invalid or missing payload";
+            window.llmResponse = "DasherError: Invalid or missing payload";
             return;
         }
         
@@ -21,21 +36,28 @@ window.fetchLLMResponse = async function(payload_json) {
             payload = JSON.parse(payload_json);
         } catch (e) {
             console.error("Failed to parse payload_json:", e.message);
-            window.llmResponse = "Error: Invalid payload JSON - " + e.message;
+            window.llmResponse = "DasherError: Invalid payload JSON - " + e.message;
+            return;
+        }
+        
+        // Get the token at runtime
+        const token = getProxyToken();
+        if (!token) {
+            window.llmResponse = "DasherError: Failed to authenticate with proxy";
             return;
         }
         
         // Fetch the LLM response
         const response = await fetch(ProxyUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-API-Token': token },
             body: payload_json
         });
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("Error fetching LLM response:", response.status, response.statusText, errorText);
-            window.llmResponse = `Error: ${response.status} ${response.statusText} - ${errorText}`;
+            console.error("Error fetching LLM response:", response.status, errorText);
+            window.llmResponse = `DasherError: ${response.status} - ${errorText}`;
             return;
         }
         
@@ -58,7 +80,7 @@ window.fetchLLMResponse = async function(payload_json) {
             console.warn("Response is not valid JSON:", jsonError.message, "Using raw text instead");
             if (text === "undefined" || text === "" || text === null) {
                 console.error("Received invalid or empty response:", text);
-                window.llmResponse = "Error: Empty or invalid response from proxy";
+                window.llmResponse = "DasherError: Empty or invalid response from proxy";
                 return;
             }
             message = text;
@@ -67,12 +89,17 @@ window.fetchLLMResponse = async function(payload_json) {
         window.llmResponse = message;
     } catch (error) {
         console.error("Error in fetchLLMResponse:", error);
-        window.llmResponse = "Error: " + error.message;
+        window.llmResponse = "DasherError: " + error.message;
     }
 };
 
 // Create a namespace for our web APIs
 window.DASHER_WEB_API = {
+    // Token management
+    getToken: function() {
+        return getProxyToken();
+    },
+    
     // Provide a better random number generator for the web version
     getRandomNumber: function() {
         const array = new Uint32Array(1);
@@ -86,6 +113,11 @@ window.DASHER_WEB_API = {
         window.crypto.getRandomValues(array);
         return Array.from(array).map(x => x / 4294967295);
     },
+    
+    // Initialize the API
+    init: function() {
+        console.log("DASHER_WEB_API initialized");
+    }
 };
 
 // Initialize the API
