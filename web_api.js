@@ -97,23 +97,11 @@ window.fetchLLMResponse = async function(payload_json) {
 
 // Create a namespace for our web APIs
 window.DASHER_WEB_API = {
-    // Token management
-    getToken: function() {
-        return getProxyToken();
-    },
-    
     // Provide a better random number generator for the web version
     getRandomNumber: function() {
         const array = new Uint32Array(1);
         window.crypto.getRandomValues(array);
         return array[0] / 4294967295;
-    },
-    
-    // Function to get multiple random numbers
-    getRandomNumbers: function(count) {
-        const array = new Uint32Array(count);
-        window.crypto.getRandomValues(array);
-        return Array.from(array).map(x => x / 4294967295);
     },
     
     // Initialize the API
