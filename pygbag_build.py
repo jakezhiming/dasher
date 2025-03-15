@@ -84,35 +84,6 @@ def build_with_pygbag():
         subprocess.run(cmd, check=True)
         print("\nBuild completed successfully!")
         
-        # Copy the web_config.js file to the build directory
-        if os.path.exists("web_config.js"):
-            print("Copying web_config.js to build/web directory...")
-            shutil.copy("web_config.js", "build/web/web_config.js")
-            
-            # Modify the index.html file to include the web_config.js script
-            index_html_path = "build/web/index.html"
-            if os.path.exists(index_html_path):
-                with open(index_html_path, "r") as f:
-                    html_content = f.read()
-                
-                # Add the script tag before the closing </head> tag
-                if "</head>" in html_content:
-                    html_content = html_content.replace("</head>", '<script src="web_config.js"></script></head>')
-                    
-                    with open(index_html_path, "w") as f:
-                        f.write(html_content)
-                    
-                    print("Added web_config.js script to index.html")
-                else:
-                    print("Could not find </head> tag in index.html")
-            else:
-                print(f"Could not find {index_html_path}")
-        else:
-            print("web_config.js file not found")
-            print("WARNING: No web_config.js file found. Your web build may not have proper configuration.")
-            print("Please create a web_config.js file in the root directory with your web configuration.")
-            return False
-        
         # Copy the web_api.js file to the build directory
         if os.path.exists("web_api.js"):
             print("Copying web_api.js to build/web directory...")

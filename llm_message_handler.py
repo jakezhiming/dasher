@@ -128,9 +128,11 @@ The rephrased messages are shown sequentially for a game, so they should be shor
                     self.client = None
                     return original_message
 
+            # Clean up the message
             complete_message = complete_message.strip()
             if complete_message.startswith('"') and complete_message.endswith('"'):
                 complete_message = complete_message[1:-1].strip()
+            complete_message = complete_message.replace('\n', ' ')
 
             # Store the complete message
             self.current_message = complete_message

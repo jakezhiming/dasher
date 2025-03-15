@@ -4,45 +4,13 @@
  * All API calls are routed through a proxy server.
  */
 
+const ProxyUrl = "http://localhost:5000/api/openai";
+
 window.llmResponse = null;
 
-window.getProxyUrl = function() {
-    if (window.ENV && window.ENV.OPENAI_PROXY_URL) {
-        console.log("Using proxy URL from configuration:", window.ENV.OPENAI_PROXY_URL);
-        return window.ENV.OPENAI_PROXY_URL;
-    }
-    
-    // Check if web_config.js has been loaded properly
-    console.log("No proxy URL found in window.ENV. Current window.ENV:", window.ENV);
-    
-    // Check if we're in a development environment and use a default URL
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-        const defaultProxyUrl = "http://localhost:5000/api/openai";
-        console.log("Using default development proxy URL:", defaultProxyUrl);
-        return defaultProxyUrl;
-    }
-    
-    console.log("No proxy URL found in configuration and not in development mode");
-    return null;
-};
+window.fetchLLMResponse = async function(payload_json) {
+    url = ProxyUrl;
 
-window.fetchLLMResponse = async function(url, payload_json) {
-    // Handle case where url is the only argument (backwards compatibility)
-    if (arguments.length === 1 && typeof url === 'string' && !payload_json) {
-        payload_json = url;  // Assume single argument is the payload
-        url = null;          // Let getProxyUrl() provide the URL
-    }
-    
-    if (!url) {
-        url = window.getProxyUrl();
-        if (!url) {
-            console.error("No proxy URL provided and none found in configuration");
-            window.llmResponse = "Error: No proxy URL available";
-            return;
-        }
-    }
-    
-    console.log("Fetching LLM response from proxy server:", url);
     try {
         // Validate payload_json
         if (!payload_json || typeof payload_json !== 'string') {
