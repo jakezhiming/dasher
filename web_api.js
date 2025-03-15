@@ -4,7 +4,9 @@
  * All API calls are routed through a proxy server.
  */
 
-const ProxyUrl = "https://dasher-30lv.onrender.com/api/openai";
+const ProxyUrl = "http://localhost:10000/api/openai"; 
+// "http://localhost:10000/api/openai" or https://your-proxy.onrender.com/api/openai
+
 const _tokenParts = [
     "MWEzZWI3OTkt",
     "OWQxMC00ZjQ2",
