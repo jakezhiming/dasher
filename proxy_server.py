@@ -101,7 +101,7 @@ async def proxy_openai():
 def main():
     """Run the proxy server"""
     parser = argparse.ArgumentParser(description="OpenAI API Proxy Server for Dasher Game")
-    parser.add_argument("--port", type=int, default=5000, help="Port to run the server on")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 10000)), help="Port to run the server on")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to run the server on")
     args = parser.parse_args()
     

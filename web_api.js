@@ -4,7 +4,7 @@
  * All API calls are routed through a proxy server.
  */
 
-const ProxyUrl = "http://localhost:5000/api/openai";
+const ProxyUrl = "http://localhost:10000/api/openai";
 const _tokenParts = [
     "MWEzZWI3OTkt",
     "OWQxMC00ZjQ2",
