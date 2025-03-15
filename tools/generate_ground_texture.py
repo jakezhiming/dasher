@@ -1,4 +1,4 @@
-from compat import pygame
+import pygame
 import os
 import random
 

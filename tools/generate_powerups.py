@@ -1,6 +1,5 @@
-from compat import pygame
+import pygame
 import os
-import math
 
 # Initialize pygame
 pygame.init()

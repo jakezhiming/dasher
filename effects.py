@@ -1,4 +1,5 @@
-from compat import pygame, random
+from compat import random
+import pygame
 import math
 from constants.colors import BLUE, MAGENTA, CYAN, GOLD, RED, WHITE
 from logger import get_module_logger

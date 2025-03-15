@@ -1,5 +1,6 @@
-from compat import pygame, random
+import pygame
 import math
+from compat import random
 from constants.colors import BLUE, CYAN, MAGENTA, RED, WHITE, WHITE_OVERLAY, BLACK, GRAY, DARK_GREY, GOLD, LIGHT_BLUE, LIGHT_GREEN
 from constants.screen import PLAY_AREA_HEIGHT, STATUS_BAR_HEIGHT, WIDTH
 from constants.ui import HEART_SPRITE_SIZE

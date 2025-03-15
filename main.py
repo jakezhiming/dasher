@@ -1,8 +1,10 @@
 import asyncio
-from compat import pygame, load_dotenv, is_web_environment, IS_WEB
+import pygame
+from compat import IS_WEB
 from compat import random
 
 if not IS_WEB:
+    from dotenv import load_dotenv
     load_dotenv()
 
 from assets_loader import load_all_assets
@@ -23,12 +25,6 @@ import input_handler
 from level_generator import generate_new_segment, remove_old_objects
 from effects import effect_manager
 from logger import logger, log_game_start, log_game_over
-from web_ui import is_web_environment
-
-if is_web_environment():
-    logger.info("Web environment detected")
-else:
-    logger.info("Desktop environment detected")
 
 # Initialize Pygame
 pygame.init()

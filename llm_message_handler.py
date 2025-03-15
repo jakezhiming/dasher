@@ -1,6 +1,6 @@
 import os
 import json
-from compat import random
+from compat import random, IS_WEB
 import asyncio
 from constants.messages import PERSONALITIES
 from logger import get_module_logger
@@ -14,18 +14,6 @@ try:
     logger.debug("Using desktop OpenAI")
 except ImportError:
     OPENAI_AVAILABLE = False
-
-# Try to detect web environment
-try:
-    from compat import is_web_environment
-    IS_WEB = is_web_environment()
-    if IS_WEB:
-        logger.info("Web environment detected")
-    else:
-        logger.info("Desktop environment detected")
-except ImportError as e:
-    IS_WEB = False
-    logger.error(f"Failed to import is_web_environment: {e}")
 
 if IS_WEB:
     OPENAI_PROXY_URL = True
@@ -60,7 +48,7 @@ class LLMMessageHandler:
                 self.client = None
         elif IS_WEB:
             # In web environment, we'll use the proxy URL
-            logger.info(f"Web environment detected, using proxy URL: {self.proxy_url}")
+            logger.info(f"Use proxy URL: {self.proxy_url}")
             # We'll initialize the client when needed
         
         # Initialize conversation history

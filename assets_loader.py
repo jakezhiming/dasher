@@ -1,5 +1,6 @@
 import os
-from compat import pygame, is_web_environment
+import pygame
+from compat import IS_WEB
 from constants.player import PLAYER_WIDTH, PLAYER_HEIGHT
 from constants.paths import (
     FONT_PATH, HEART_SPRITE_PATH, 
@@ -19,15 +20,7 @@ from logger import get_module_logger
 
 logger = get_module_logger('assets_loader')
 
-# Check if we're in web environment for optimizations
-IS_WEB = is_web_environment()
-
-env_value = os.getenv("USE_CACHED_BACKGROUND")
-if env_value is not None:
-    USE_CACHED_BACKGROUND = env_value.lower() == 'true'
-else:
-    USE_CACHED_BACKGROUND = True if IS_WEB else False
-
+USE_CACHED_BACKGROUND = os.getenv("USE_CACHED_BACKGROUND", "true" if IS_WEB else "false").lower() == "true"
 logger.info(f"USE_CACHED_BACKGROUND: {USE_CACHED_BACKGROUND}")
 
 # ===== FONT CACHE =====

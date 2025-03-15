@@ -1,13 +1,10 @@
 """
-Compatibility layer for handling different pygame versions.
-This module provides a unified interface for both pygame and pygame_ce, and
-handles dotenv imports in both desktop and web environments.
+Compatibility layer for handling web and desktop environments.
 """
 
 import os
 from logger import get_module_logger
 import random
-import sys
 
 logger = get_module_logger('compat')
 
@@ -27,52 +24,8 @@ def is_web_environment():
             'EMSCRIPTEN' in os.environ or
             os.path.exists('/.emscripten'))
 
-# In web environment, use the built-in pygame
-# In desktop environment, use pygame_ce
-if is_web_environment():
-    try:
-        import pygame
-        logger.info("Using built-in pygame in web environment")
-    except ImportError:
-        logger.info("Failed to import pygame in web environment")
-        raise
-else:
-    try:
-        import pygame_ce as pygame
-        logger.info("Using pygame_ce in desktop environment")
-    except ImportError:
-        try:
-            import pygame
-            logger.info("Falling back to regular pygame in desktop environment")
-        except ImportError:
-            logger.info("Failed to import any pygame version")
-            raise
-
-def fallback_load_dotenv(dotenv_path=None, stream=None, verbose=False, override=False):
-    """
-    Fallback implementation of load_dotenv that does nothing but log a message.
-    Used when python-dotenv is not available.
-    """
-    logger.info("Warning: python-dotenv not available, using fallback implementation")
-    return False
-
-# Try to import the real load_dotenv function
-try:
-    try:
-        # Try the standard import first
-        from dotenv import load_dotenv
-        logger.info("Successfully imported dotenv")
-    except ImportError:
-        # If that fails, try the python-dotenv import
-        from python_dotenv import load_dotenv
-        logger.info("Successfully imported python-dotenv")
-except ImportError:
-    # If both fail, use the fallback
-    load_dotenv = fallback_load_dotenv
-    logger.info("Using fallback dotenv implementation")
-
-# Check if we're running in a browser environment (via pygbag)
-IS_WEB = sys.platform == 'emscripten'
+IS_WEB = is_web_environment()
+logger.info(f"IS_WEB: {IS_WEB}")
 
 # If we're in a web environment, set up browser-specific random functions
 if IS_WEB:
@@ -144,9 +97,5 @@ if IS_WEB:
     random.randint = web_random.randint
     random.choice = web_random.choice
     random.choices = web_random.choices
-    
-    logger.info("Using web-compatible random number generator")
-else:
-    logger.info("Using standard Python random number generator")
 
-__all__ = ['load_dotenv', 'pygame', 'is_web_environment', 'IS_WEB', 'random'] 
+__all__ = ['IS_WEB', 'random'] 

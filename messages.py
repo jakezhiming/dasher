@@ -4,7 +4,7 @@ import threading
 from constants.ui import MESSAGE_CHAR_DELAY, DEFAULT_MESSAGE_DELAY, MESSAGE_TRANSITION_DELAY
 from llm_message_handler import LLMMessageHandler
 from logger import get_module_logger
-from compat import is_web_environment
+from compat import IS_WEB
 from constants.messages import DEFAULT_MESSAGES
 
 logger = get_module_logger('messages')
@@ -34,15 +34,15 @@ class StatusMessageManager:
         self.llm_handler = LLMMessageHandler()
         
         # Set up asyncio event loop in a separate thread, but only for desktop environment
-        self.is_web = is_web_environment()
-        if not self.is_web:
+        if not IS_WEB:
             self.loop = asyncio.new_event_loop()
             self.thread = threading.Thread(target=self._run_event_loop, daemon=True)
             self.thread.start()
+            logger.info("Using separate event loop for messages")
         else:
             # In web environment, we'll use the main event loop
             self.loop = None
-            logger.info("Web environment detected, using main event loop for messages")
+            logger.info("Use main event loop for messages")
         
         # Add a delay between messages in the queue
         self.message_transition_delay = MESSAGE_TRANSITION_DELAY
@@ -71,7 +71,7 @@ class StatusMessageManager:
                     self._load_next_message()
             else:
                 # Process the message through LLM
-                if self.is_web:
+                if IS_WEB:
                     # In web environment, we'll create a task in the main event loop
                     # The main loop will handle this task during the next await asyncio.sleep(0)
                     asyncio.create_task(self._process_with_llm(message))

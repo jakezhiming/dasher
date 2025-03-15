@@ -1,4 +1,5 @@
-from compat import pygame, random
+import pygame
+from compat import random
 from constants.player import (
     PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_INITIAL_X, PLAYER_INITIAL_Y,
     GRAVITY, FLYING_GRAVITY_REDUCTION, INVINCIBILITY_DURATION, INVINCIBILITY_FROM_DAMAGE_DURATION, 
