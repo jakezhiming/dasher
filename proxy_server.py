@@ -2,17 +2,8 @@
 """
 OpenAI API Proxy Server for Dasher Game
 
-This script creates a simple proxy server that forwards requests to the OpenAI API
-and handles CORS headers. This is useful for testing the web version of the game
-locally or deploying it to a server where you want to avoid CORS issues.
-
 Usage:
-    python proxy_server.py [--port PORT] [--host HOST] [--log-file LOG_FILE]
-
-Requirements:
-    - quart
-    - quart-cors
-    - httpx
+    python proxy_server.py [--port PORT] [--host HOST]
 """
 
 import os
