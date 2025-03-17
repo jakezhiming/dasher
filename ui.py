@@ -273,12 +273,20 @@ def draw_ui(screen, player):
                 screen.blit(plus_text, (WIDTH - plus_text.get_width() - 10, 35))
                 
                 # Add sparkle effects around the bonus text
-                if highlight_progress < 0.7:  # Only show sparkles for the first 70% of the animation
-                    for j in range(3):
-                        sparkle_x = WIDTH - plus_text.get_width() / 2 - 10 + random.randint(-20, 20)
-                        sparkle_y = 35 + plus_text.get_height() / 2 + random.randint(-10, 10)
-                        sparkle_size = random.randint(2, 4)
-                        pygame.draw.circle(screen, WHITE, (int(sparkle_x), int(sparkle_y)), sparkle_size)
+                for j in range(3):
+                    sparkle_x = WIDTH - plus_text.get_width() / 2 - 10 + random.randint(-20, 20)
+                    sparkle_y = 35 + plus_text.get_height() / 2 + random.randint(-10, 10)
+                    sparkle_size = random.randint(2, 4)
+                    pygame.draw.circle(screen, WHITE, (int(sparkle_x), int(sparkle_y)), sparkle_size)
+                
+                # Add sparkles across the entire screen for bonus celebration
+                if highlight['is_bonus']:
+                    for j in range(30):
+                        sparkle_x = random.randint(0, WIDTH)
+                        sparkle_y = random.randint(0, PLAY_AREA_HEIGHT)
+                        sparkle_size = random.randint(1, 4)
+                        sparkle_color = random.choice([BLUE, CYAN, MAGENTA, RED, WHITE, BLACK, GRAY, DARK_GREY, GOLD, LIGHT_BLUE, LIGHT_GREEN])
+                        pygame.draw.circle(screen, sparkle_color, (int(sparkle_x), int(sparkle_y)), sparkle_size)
             else:
                 # Normal position for regular score increases
                 screen.blit(plus_text, (WIDTH - plus_text.get_width() - 10, 35))
@@ -395,17 +403,6 @@ def draw_ui(screen, player):
         target_label = render_retro_text("TARGET", 8, target_color)
         target_label_rect = target_label.get_rect(center=(circle_x, circle_y - 7))
         screen.blit(target_label, target_label_rect)
-        
-        # Draw celebration effects if active
-        if celebration_active:
-            # Add sparkle effects around the circle
-            for i in range(5):
-                angle = random.random() * 2 * math.pi
-                distance = bonus_score_circle_radius * 1.2
-                sparkle_x = int(circle_x + math.cos(angle) * distance)
-                sparkle_y = int(circle_y + math.sin(angle) * distance)
-                sparkle_size = random.randint(2, 4)
-                pygame.draw.circle(screen, WHITE, (sparkle_x, sparkle_y), sparkle_size)
     
     # Draw active power-up indicators
     draw_active_powerups(screen, player, current_time)

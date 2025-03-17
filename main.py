@@ -235,8 +235,12 @@ async def main():
                 game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2 - 50))
                 screen.blit(game_over_text, game_over_rect)
                 
-                score_text = render_retro_text(f"Final Score: {player.score}", 24, BLUE)
+                score_text = render_retro_text(f"Player: {message_manager.llm_handler.get_current_personality()}", 24, BLUE)
                 score_rect = score_text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2))
+                screen.blit(score_text, score_rect)
+
+                score_text = render_retro_text(f"Final Score: {player.score}", 24, BLUE)
+                score_rect = score_text.get_rect(center=(WIDTH // 2, PLAY_AREA_HEIGHT // 2 + 50))
                 screen.blit(score_text, score_rect)
                 
                 # Draw UI to ensure status messages continue to be displayed
