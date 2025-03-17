@@ -7,16 +7,10 @@ from logger import get_module_logger
 
 logger = get_module_logger('llm_message_handler')
 
-# Try to import OpenAI for desktop version
-try:
-    from openai import AsyncOpenAI
-    openai_available = True
-except ImportError:
-    openai_available = False
-
 if IS_WEB:
     use_proxy_server = True
 else:
+    from openai import AsyncOpenAI
     use_proxy_server = False
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -31,24 +25,24 @@ class LLMMessageHandler:
         self.conversation_history = []
         self.personalities = PERSONALITIES
         self.personality = DEFAULT_PERSONALITY
-
-        if not OPENAI_API_KEY:
-            logger.warning("OPENAI_API_KEY not found in environment variables")
         
         # Initialize OpenAI client if available
-        if not IS_WEB and openai_available and OPENAI_API_KEY:
-            try:
-                self.client = AsyncOpenAI(
-                    api_key=OPENAI_API_KEY
-                )
-                logger.info("Desktop OpenAI client initialized")
-            except Exception as e:
-                logger.error(f"Failed to initialize desktop OpenAI client: {e}")
+        if not IS_WEB:
+            if not OPENAI_API_KEY:
+                logger.warning("OPENAI_API_KEY not found in environment variables. Use default messages.")
                 self.client = None
+            else:
+                try:
+                    self.client = AsyncOpenAI(
+                        api_key=OPENAI_API_KEY
+                    )
+                    logger.info("OpenAI client initialized")
+                except Exception as e:
+                    logger.error(f"Failed to initialize OpenAI client: {e}. Use default messages.")
+                    self.client = None
         elif IS_WEB:
             # In web environment, we'll use the proxy URL
             logger.info(f"Use proxy server: {self.use_proxy_server}")
-            # We'll initialize the client when needed
         
         # Initialize conversation history
         self.conversation_history = []
@@ -93,7 +87,6 @@ class LLMMessageHandler:
             prompt = f"""Rephrase the following message in the style of a {self.personality}. 
 The rephrased messages are shown sequentially based on what is happening in the game in real time, so they should be short and to the point.
 Do not use any emojis or special characters.
-Be entertaining and engaging.
 
 {history_context}Message to rephrase: \"{original_message}\""""
             
