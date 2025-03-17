@@ -23,7 +23,10 @@ from messages import message_manager
 import input_handler
 from level_generator import generate_new_segment, remove_old_objects
 from effects import effect_manager
-from logger import logger, log_game_start, log_game_over
+from logger import logger, get_module_logger, log_game_start, log_game_over
+from leaderboard import fetch_leaderboard, submit_score
+
+logger = get_module_logger('main')
 
 # Initialize Pygame
 pygame.init()
@@ -37,12 +40,11 @@ logger.info(f"Screen setup complete: {WIDTH}x{HEIGHT}")
 
 # Load game assets
 try:
-    load_all_assets()  # Load all game assets using the asset_loader
+    load_all_assets()
     logger.info("Game assets loaded")
 except Exception as e:
     logger.error(f"Failed to load assets: {str(e)}")
-    # Don't exit the game, continue with potentially missing assets
-    # This will prevent a black screen in the web version
+    exit()
 
 async def main():
     # Initialize game
@@ -81,6 +83,10 @@ async def main():
 
     # Log game start
     log_game_start()
+
+    # Update leaderboard display at start
+    if IS_WEB:
+        fetch_leaderboard()
 
     # Main loop
     running = True
@@ -195,6 +201,11 @@ async def main():
                 if pygame.time.get_ticks() - game_over_timer > GAME_OVER_DISPLAY_DURATION:
                     game_state = GAME_OVER
                     log_game_over(player.score)
+                    
+                    # Submit score to leaderboard
+                    if IS_WEB:
+                        current_personality = message_manager.llm_handler.get_current_personality()
+                        submit_score(current_personality, player.score)
                 
                 # Continue drawing the game state - reuse the same drawing code
                 draw_background(screen, camera_x)
@@ -264,6 +275,10 @@ async def main():
                     # LLM service is not available
                     message_manager.llm_handler.personality = DEFAULT_PERSONALITY
                     message_manager.set_message(random.choice(WELCOME_BACK_MESSAGES))
+                
+                # Refresh leaderboard at start of new game
+                if IS_WEB:
+                    fetch_leaderboard()
 
             # Update the display
             pygame.display.flip()

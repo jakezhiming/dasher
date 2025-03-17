@@ -73,6 +73,51 @@ def download_dependencies():
     print("All dependencies downloaded successfully!")
     return True
 
+def inject_ui_panels(index_html_path):
+    """Inject game UI panels into the index.html file."""
+    print("Injecting UI panels into index.html...")
+    
+    try:
+        # Read the CSS and HTML from external files
+        css_file_path = "panels.css"
+        html_file_path = "panels.html"
+        
+        if not os.path.exists(css_file_path):
+            print(f"Error: {css_file_path} not found")
+            return False
+            
+        if not os.path.exists(html_file_path):
+            print(f"Error: {html_file_path} not found")
+            return False
+        
+        # Copy CSS and HTML files to build directory
+        print("Copying panels.css and panels.html to build/web directory...")
+        shutil.copy(css_file_path, "build/web/panels.css")
+        shutil.copy(html_file_path, "build/web/panels.html")
+
+        with open(html_file_path, "r") as f:
+            panels_html = f.read()
+
+        with open(index_html_path, "r") as f:
+            html_content = f.read()
+        
+        # Add CSS link in the head section
+        if "</head>" in html_content:
+            html_content = html_content.replace("</head>", '<link rel="stylesheet" href="panels.css"></head>')
+        
+        # Add panels HTML before the closing body tag
+        if "</body>" in html_content:
+            html_content = html_content.replace("</body>", f'{panels_html}</body>')
+        
+        with open(index_html_path, "w") as f:
+            f.write(html_content)
+        
+        print("Successfully injected UI panels!")
+        return True
+    except Exception as e:
+        print(f"Error injecting UI panels: {e}")
+        return False
+
 def build_with_pygbag():
     """Build the game with pygbag."""
     print("Building game with pygbag...")
@@ -111,6 +156,11 @@ def build_with_pygbag():
             print("web_api.js file not found")
             return False
         
+        # Inject leaderboard UI
+        index_html_path = "build/web/index.html"
+        if os.path.exists(index_html_path):
+            inject_ui_panels(index_html_path)
+        
         print("\nYou can find the built files in the 'build/web' directory.")
         print("To test locally, run: python -m http.server --directory build/web")
         print("Then open a browser and go to: http://localhost:8000")
@@ -140,4 +190,4 @@ def main():
         print("      You can now serve the game with a simple HTTP server without CDN dependencies.")
 
 if __name__ == "__main__":
-    main() 
+    main()

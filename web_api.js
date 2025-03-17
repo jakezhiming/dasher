@@ -4,8 +4,9 @@
  * All API calls are routed through a proxy server.
  */
 
-const ProxyUrl = "http://localhost:10000/api/openai"; 
-// "http://localhost:10000/api/openai" or https://your-proxy.onrender.com/api/openai
+const BaseUrl = "http://localhost:10000/"; 
+// Base URL for the server: "http://localhost:10000/" for local development 
+// or your Render URL (e.g., "https://dasher-api.onrender.com/")
 
 const _tokenParts = [
     "MWEzZWI3OTkt",
@@ -24,6 +25,61 @@ function getProxyToken() {
 }
 
 window.llmResponse = null;
+window.leaderboardData = null;
+
+// Fetch leaderboard data
+window.fetchLeaderboard = async function(limit = 10) {
+    try {
+        console.log("Fetching leaderboard data from server...");
+        const response = await fetch(`${BaseUrl}leaderboard?limit=${limit}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("Leaderboard data received:", data);
+        window.leaderboardData = data;
+        return data;
+    } catch (error) {
+        console.error("Error fetching leaderboard:", error);
+        // Don't clear existing data on error
+        return window.leaderboardData || null;
+    }
+};
+
+// Submit a new score
+window.submitScore = async function(playerName, score) {
+    try {
+        console.log(`Submitting score: ${playerName} - ${score}`);
+        const token = getProxyToken();
+        if (!token) {
+            throw new Error("Failed to authenticate with proxy");
+        }
+
+        const response = await fetch(`${BaseUrl}leaderboard`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Token': token
+            },
+            body: JSON.stringify({
+                player_name: playerName,
+                score: score
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        console.log("Score submitted successfully, refreshing leaderboard");
+        // Refresh leaderboard after submitting score
+        const newData = await window.fetchLeaderboard();
+        return newData;
+    } catch (error) {
+        console.error("Error submitting score:", error);
+        return false;
+    }
+};
 
 window.fetchLLMResponse = async function(payload_json) {
     try {
@@ -50,7 +106,7 @@ window.fetchLLMResponse = async function(payload_json) {
         }
         
         // Fetch the LLM response
-        const response = await fetch(ProxyUrl, {
+        const response = await fetch(`${BaseUrl}api/openai`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-API-Token': token },
             body: payload_json
@@ -105,8 +161,16 @@ window.DASHER_WEB_API = {
     },
     
     // Initialize the API
-    init: function() {
+    init: async function() {
         console.log("DASHER_WEB_API initialized");
+        try {
+            // Fetch initial leaderboard data
+            console.log("Fetching initial leaderboard data...");
+            const data = await window.fetchLeaderboard();
+            console.log("Initial leaderboard data loaded:", data);
+        } catch (e) {
+            console.error("Error loading initial leaderboard data:", e);
+        }
     }
 };
 
