@@ -248,7 +248,7 @@ def main():
     logger.info(f"CORS configured with allow_origin: {CORS_ALLOW_ORIGIN}")
     logger.info(f"Rate limit configured: {MAX_REQUESTS_PER_MINUTE} requests per minute")
     logger.info(f"Proxy endpoint: http://{args.host}:{args.port}/api/openai")
-    logger.info(f"Leaderboard endpoint: http://{args.host}:{args.port}/api/leaderboard")
+    logger.info(f"Leaderboard endpoint: http://{args.host}:{args.port}/leaderboard")
     logger.info(f"Ping endpoint: http://{args.host}:{args.port}/ping")
     
     # Run the Quart app with hypercorn

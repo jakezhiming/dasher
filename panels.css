@@ -25,7 +25,7 @@ canvas.emscripten {
     overflow-x: hidden;
     white-space: normal;
     word-wrap: break-word;
-    font-size: 7px;
+    font-size: 10px;
 }
 
 /* Credit text */
@@ -34,7 +34,7 @@ canvas.emscripten {
     bottom: 15px;
     left: 10px;
     right: 10px;
-    font-size: 3px;
+    font-size: 6px;
     color: #666;
     font-style: italic;
     text-align: left;
@@ -61,14 +61,14 @@ canvas.emscripten {
     margin: 0 0 15px 0;
     text-align: center;
     word-wrap: break-word;
-    font-size: 24px;
+    font-size: 27px;
 }
 
 #intro-panel p {
     line-height: 1.4;
     margin-bottom: 10px;
     word-wrap: break-word;
-    font-size: 7px;
+    font-size: 10px;
 }
 
 /* Right panel - Leaderboard */
@@ -82,7 +82,7 @@ canvas.emscripten {
     text-align: center;
     color: #007bff;
     word-wrap: break-word;
-    font-size: 24px;
+    font-size: 27px;
 }
 
 .leaderboard-entries {
@@ -99,7 +99,7 @@ canvas.emscripten {
     display: flex;
     flex-direction: column;
     word-wrap: break-word;
-    font-size: 7px;
+    font-size: 10px;
 }
 
 .leaderboard-entry .rank-name {
@@ -139,7 +139,7 @@ canvas.emscripten {
     
     .side-panel {
         width: 15%;
-        font-size: 7px;
+        font-size: 10px;
         padding: 12px;
     }
     
@@ -149,7 +149,7 @@ canvas.emscripten {
     }
     
     #intro-panel p, .leaderboard-entry {
-        font-size: 7px;
+        font-size: 10px;
         margin-bottom: 8px;
     }
     
