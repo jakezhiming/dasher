@@ -1,0 +1,159 @@
+/* Import retro font */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* Game container */
+canvas.emscripten {
+    width: 60% !important;
+    left: 20% !important;
+    right: 20% !important;
+    margin: auto !important;
+}
+
+/* Common panel styles */
+.side-panel {
+    position: fixed;
+    top: 0;
+    width: 20%;
+    height: 100vh;
+    background: #222;
+    color: white;
+    padding: 15px;
+    box-sizing: border-box;
+    font-family: 'Press Start 2P', cursive;
+    z-index: 10;
+    overflow-y: hidden;
+    overflow-x: hidden;
+    white-space: normal;
+    word-wrap: break-word;
+    font-size: 7px;
+}
+
+/* Credit text */
+.credit-text {
+    position: absolute;
+    bottom: 15px;
+    left: 10px;
+    right: 10px;
+    font-size: 3px;
+    color: #666;
+    font-style: italic;
+    text-align: left;
+}
+
+.credit-text a {
+    color: #666;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.credit-text a:hover {
+    color: #007bff;
+}
+
+/* Left panel - Introduction */
+#intro-panel {
+    left: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#intro-panel h2 {
+    color: #007bff;
+    margin: 0 0 15px 0;
+    text-align: center;
+    word-wrap: break-word;
+    font-size: 24px;
+}
+
+#intro-panel p {
+    line-height: 1.4;
+    margin-bottom: 10px;
+    word-wrap: break-word;
+    font-size: 7px;
+}
+
+/* Right panel - Leaderboard */
+#leaderboard {
+    right: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#leaderboard h2 {
+    margin: 0 0 15px 0;
+    text-align: center;
+    color: #007bff;
+    word-wrap: break-word;
+    font-size: 24px;
+}
+
+.leaderboard-entries {
+    height: calc(100% - 50px);
+    overflow-y: hidden;
+    overflow-x: hidden;
+}
+
+.leaderboard-entry {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    word-wrap: break-word;
+    font-size: 7px;
+}
+
+.leaderboard-entry .rank-name {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+}
+
+.leaderboard-entry .rank {
+    font-weight: bold;
+    color: #007bff;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+
+.leaderboard-entry .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    word-wrap: break-word;
+    flex: 1;
+}
+
+.leaderboard-entry .score {
+    color: #ffd700;
+    text-align: right;
+}
+
+/* Mobile adjustments */
+@media (max-width: 1024px) {
+    canvas.emscripten {
+        width: 70% !important;
+        left: 15% !important;
+        right: 15% !important;
+    }
+    
+    .side-panel {
+        width: 15%;
+        font-size: 7px;
+        padding: 12px;
+    }
+    
+    #intro-panel h2, #leaderboard h2 {
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+    
+    #intro-panel p, .leaderboard-entry {
+        font-size: 7px;
+        margin-bottom: 8px;
+    }
+    
+    .leaderboard-entry {
+        padding: 6px;
+    }
+}

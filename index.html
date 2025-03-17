@@ -343,7 +343,7 @@ config = {
 
     <script src="https://pygame-web.github.io/archives/0.9//browserfs.min.js"></script>
 
-<script src="web_api.js"></script></head>
+<script src="web_api.js"></script><link rel="stylesheet" href="panels.css"></head>
 
 <body>
 
@@ -485,5 +485,26 @@ frameborder="1"
 
     </script>
 
-</body>
+<div id="intro-panel" class="side-panel">
+    <br>
+    <h2>Dasher</h2>
+    <br>
+    <p>Dash through obstacles and collect points in this exciting arcade game!</p>
+    <br>
+    <p><strong>How to Play:</strong></p>
+    <p>• Use arrow keys to dash and space to jump</p>
+    <p>• Avoid obstacles</p>
+    <p>• Collect power-ups</p>
+    <p>• Beat the high score!</p>
+    <div class="credit-text">An AI-powered game<br>by <a href="https://www.linkedin.com/in/jakezhiming/" target="_blank">jakezhiming</a></div>
+</div>
+
+<div id="leaderboard" class="side-panel">
+    <br>
+    <h2>Leader<br>board</h2>
+    <br>
+    <div class="leaderboard-entries">
+        <!-- Leaderboard entries will be dynamically inserted here by JavaScript -->
+    </div>
+</div></body>
 </html>
