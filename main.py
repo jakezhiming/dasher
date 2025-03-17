@@ -13,7 +13,7 @@ from constants.game_states import (
     GAME_RUNNING, GAME_LOST_MESSAGE, GAME_OVER, GAME_OVER_DISPLAY_DURATION
 )
 from constants.messages import (
-    WELCOME_MESSAGES, NEW_PERSONALITY_MESSAGES, WELCOME_BACK_MESSAGES
+    WELCOME_MESSAGES, NEW_PERSONALITY_MESSAGES, WELCOME_BACK_MESSAGES, DEFAULT_PERSONALITY
 )
 from utils import render_retro_text, draw_background
 from player import Player
@@ -66,12 +66,19 @@ async def main():
     except Exception as e:
         logger.warning(f"Failed to reset conversation history: {str(e)}")
     
+    # Starting personality
+    if message_manager.llm_handler.is_available():
+        message_manager.llm_handler.change_personality()
+        logger.info(f"Starting personality: {message_manager.llm_handler.get_current_personality()}")
+    else:
+        logger.info(f"Starting personality: {message_manager.llm_handler.get_current_personality()}")
+
     # Set an initial welcome message
     try:
         message_manager.set_message(random.choice(WELCOME_MESSAGES))
     except Exception as e:
         logger.warning(f"Failed to set welcome message: {str(e)}")
-    
+
     # Log game start
     log_game_start()
 
@@ -243,18 +250,19 @@ async def main():
                 
                 logger.info("Game reset after game over")
                 
-                # Change to a new LLM personality if available
+                # Change to a new personality if LLM is available
                 if message_manager.llm_handler.is_available():
                     try:
                         new_personality = message_manager.llm_handler.change_personality()
-                        message_manager.set_message(f"{random.choice(NEW_PERSONALITY_MESSAGES)} {new_personality}.")
-                        logger.info(f"Changed LLM personality to {new_personality}")
+                        message_manager.set_message(f"{random.choice(NEW_PERSONALITY_MESSAGES)} {new_personality.lower()}.")
+                        logger.info(f"Changed personality to {new_personality}")
                     except Exception as e:
                         # Handle case where personality change fails for some reason
-                        logger.warning(f"Failed to change LLM personality: {str(e)}")
+                        logger.warning(f"Failed to change personality: {str(e)}")
                         message_manager.set_message(random.choice(WELCOME_BACK_MESSAGES))
                 else:
                     # LLM service is not available
+                    message_manager.llm_handler.personality = DEFAULT_PERSONALITY
                     message_manager.set_message(random.choice(WELCOME_BACK_MESSAGES))
 
             # Update the display

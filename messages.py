@@ -181,12 +181,6 @@ class StatusMessageManager:
     def mark_message_shown(self, message_key):
         """Mark a message as having been shown"""
         self.shown_messages.add(message_key)
-        
-    def get_current_personality(self):
-        """Get the current LLM personality"""
-        if self.llm_handler.is_available():
-            return self.llm_handler.get_current_personality()
-        return "None"
 
 # Create a global instance of the message manager
 message_manager = StatusMessageManager()

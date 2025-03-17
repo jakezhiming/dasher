@@ -701,6 +701,16 @@ def draw_debug_info(screen, player):
     screen.blit(coin_text, (10, y_pos))
     y_pos += line_height
     
+    # Display current LLM personality
+    personality_text = render_retro_text(f"Personality: {message_manager.llm_handler.get_current_personality()}", 12, BLACK)
+    screen.blit(personality_text, (10, y_pos))
+    y_pos += line_height
+    
+    # Display difficulty percentage
+    difficulty_text = render_retro_text(f"Difficulty: {difficulty_percentage}%", 12, BLACK)
+    screen.blit(difficulty_text, (10, y_pos))
+    y_pos += line_height
+
     # Display bonus score system info
     if player.bonus_score_active:
         current_time = pygame.time.get_ticks()
@@ -714,12 +724,3 @@ def draw_debug_info(screen, player):
         )
         screen.blit(bonus_text, (10, y_pos))
         y_pos += line_height
-    
-    # Display current LLM personality
-    personality_text = render_retro_text(f"Personality: {message_manager.get_current_personality()}", 12, BLACK)
-    screen.blit(personality_text, (10, y_pos))
-    y_pos += line_height
-    
-    # Display difficulty percentage
-    difficulty_text = render_retro_text(f"Difficulty: {difficulty_percentage}%", 12, BLACK)
-    screen.blit(difficulty_text, (10, y_pos)) 

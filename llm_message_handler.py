@@ -2,7 +2,7 @@ import os
 import json
 from compat import random, IS_WEB
 import asyncio
-from constants.messages import PERSONALITIES
+from constants.messages import PERSONALITIES, DEFAULT_PERSONALITY
 from logger import get_module_logger
 
 logger = get_module_logger('llm_message_handler')
@@ -10,15 +10,14 @@ logger = get_module_logger('llm_message_handler')
 # Try to import OpenAI for desktop version
 try:
     from openai import AsyncOpenAI
-    OPENAI_AVAILABLE = True
-    logger.debug("Using desktop OpenAI")
+    openai_available = True
 except ImportError:
-    OPENAI_AVAILABLE = False
+    openai_available = False
 
 if IS_WEB:
-    OPENAI_PROXY_URL = True
+    use_proxy_server = True
 else:
-    OPENAI_PROXY_URL = False
+    use_proxy_server = False
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
@@ -26,29 +25,29 @@ class LLMMessageHandler:
     def __init__(self):
         # Initialize OpenAI client
         self.client = None
-        self.proxy_url = OPENAI_PROXY_URL
+        self.use_proxy_server = use_proxy_server
         self.is_streaming = False
         self.current_message = ""
         self.conversation_history = []
-        
-        # Select a random personality
         self.personalities = PERSONALITIES
-        self.personality = random.choice(self.personalities)
-        logger.info(f"Selected personality: {self.personality}")
+        self.personality = DEFAULT_PERSONALITY
+
+        if not OPENAI_API_KEY:
+            logger.warning("OPENAI_API_KEY not found in environment variables")
         
         # Initialize OpenAI client if available
-        if not IS_WEB and OPENAI_AVAILABLE and OPENAI_API_KEY:
+        if not IS_WEB and openai_available and OPENAI_API_KEY:
             try:
                 self.client = AsyncOpenAI(
                     api_key=OPENAI_API_KEY
                 )
-                logger.info("OpenAI client initialized")
+                logger.info("Desktop OpenAI client initialized")
             except Exception as e:
-                logger.error(f"Failed to initialize OpenAI client: {e}")
+                logger.error(f"Failed to initialize desktop OpenAI client: {e}")
                 self.client = None
         elif IS_WEB:
             # In web environment, we'll use the proxy URL
-            logger.info(f"Use proxy URL: {self.proxy_url}")
+            logger.info(f"Use proxy server: {self.use_proxy_server}")
             # We'll initialize the client when needed
         
         # Initialize conversation history
@@ -57,7 +56,7 @@ class LLMMessageHandler:
     
     def is_available(self):
         """Check if the LLM service is available"""
-        return (self.client is not None) or (IS_WEB and self.proxy_url)
+        return (self.client is not None) or (IS_WEB and self.use_proxy_server)
     
     def reset_conversation_history(self):
         """Reset the conversation history for a new game"""
@@ -88,14 +87,15 @@ class LLMMessageHandler:
             if self.conversation_history:
                 history_context = "Previous messages shown in the game:\n"
                 for i, msg in enumerate(self.conversation_history):
-                    history_context += f"{i+1}. Original: \"{msg['original']}\", Rephrased: \"{msg['rephrased']}\"\n"
+                    history_context += f"{i+1}. \"{msg['rephrased']}\"\n"
                 history_context += "\n"
             
             prompt = f"""Rephrase the following message in the style of a {self.personality}. 
+The rephrased messages are shown sequentially based on what is happening in the game in real time, so they should be short and to the point.
 Do not use any emojis or special characters.
-The rephrased messages are shown sequentially for a game, so they should be short and to the point.
+Be entertaining and engaging.
 
-{history_context}Current message: "{original_message}" """
+{history_context}Message to rephrase: \"{original_message}\""""
             
             if IS_WEB:
                 # Use Pyodide's js fetch for web version
@@ -186,7 +186,7 @@ The rephrased messages are shown sequentially for a game, so they should be shor
             if llm_response:
                 if "DasherError" in llm_response:
                     logger.error(f"Proxy Server returned an error: {llm_response}. Switch to default messages.")
-                    self.proxy_url = None
+                    self.use_proxy_server = False
                     return original_message
                 else:
                     logger.info("Successfully received response from Proxy Server")
@@ -202,15 +202,10 @@ The rephrased messages are shown sequentially for a game, so they should be shor
     
     def change_personality(self):
         """Change to a different random personality"""
-        # Only change personality if LLM service is available
-        if not self.is_available():
-            logger.info("LLM service not available - personality change skipped")
-            return self.personality
-            
         new_personality = random.choice([p for p in PERSONALITIES if p != self.personality])
         self.personality = new_personality
         return self.personality
 
-    async def process_message(self, original_message, timeout=2):
+    async def process_message(self, original_message, timeout=5):
         """Process a message and return the response."""
         return await self.get_streaming_response(original_message, timeout) 
