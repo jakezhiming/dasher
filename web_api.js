@@ -4,7 +4,7 @@
  * All API calls are routed through a proxy server.
  */
 
-const BaseUrl = "http://localhost:10000/"; 
+const BaseUrl = "https://dasher-30lv.onrender.com/"; 
 // Base URL for the server: "http://localhost:10000/" for local development 
 // or your Render URL (e.g., "https://dasher-api.onrender.com/")
 
