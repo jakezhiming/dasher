@@ -16,6 +16,7 @@ import os
 import subprocess
 import shutil
 import urllib.request
+import tempfile
 
 def check_pygbag_installed():
     """Check if pygbag is installed."""
@@ -121,73 +122,95 @@ def inject_ui_panels(index_html_path):
 def build_with_pygbag():
     """Build the game with pygbag."""
     print("Building game with pygbag...")
+
+    # Delete previous build directory
+    if os.path.exists("build"):
+        shutil.rmtree("build")
     
-    # Run pygbag on the main.py file
-    cmd = [sys.executable, "-m", "pygbag", "--build", "main.py"]
+    files_not_required = ['.env', '.env.example', 'web_api.js', 'panels.css', 'panels.html', 'README.md', 'requirements.txt', 'leaderboard.db']
+    temp_files = {}
     
     try:
-        subprocess.run(cmd, check=True)
-        print("\nBuild completed successfully!")
+        # Temporarily move files not required for the build
+        print("Moving files not required for the build out of the build directory...")
+        for file in files_not_required:
+            if os.path.exists(file):
+                temp_fd, temp_path = tempfile.mkstemp(prefix=f"{file}_backup_")
+                os.close(temp_fd)
+                shutil.copy(file, temp_path)
+                temp_files[file] = temp_path
+                os.remove(file)
         
-        # Copy the web_api.js file to the build directory
-        if os.path.exists("web_api.js"):
-            print("Copying web_api.js to build/web directory...")
-            shutil.copy("web_api.js", "build/web/web_api.js")
-            
-            # Modify the index.html file to include the web_api.js script
-            index_html_path = "build/web/index.html"
-            if os.path.exists(index_html_path):
-                with open(index_html_path, "r") as f:
-                    html_content = f.read()
-                
-                # Add the script tag before the closing </head> tag
-                if "</head>" in html_content:
-                    html_content = html_content.replace("</head>", '<script src="web_api.js"></script></head>')
-                    
-                    with open(index_html_path, "w") as f:
-                        f.write(html_content)
-                    
-                    print("Added web_api.js script to index.html")
-                else:
-                    print("Could not find </head> tag in index.html")
-            else:
-                print(f"Could not find {index_html_path}")
-        else:
-            print("web_api.js file not found")
+        # Run pygbag on the main.py file
+        cmd = [sys.executable, "-m", "pygbag", "--build", "main.py"]
+        
+        try:
+            subprocess.run(cmd, check=True)
+            print("Pygbag build completed")
+
+        except subprocess.CalledProcessError as e:
+            print(f"Pygbag build failed with error: {e}")
             return False
+
+    finally:
+        # Restore the files not required for the build
+        print("Restoring files not required for the build...")
+        for file, temp_path in temp_files.items():
+            if os.path.exists(temp_path):
+                shutil.copy(temp_path, file)
+                os.remove(temp_path)
+            
+    # Copy the web_api.js file to the build directory
+    if os.path.exists("web_api.js"):
+        print("Copying web_api.js to build/web directory...")
+        shutil.copy("web_api.js", "build/web/web_api.js")
         
-        # Inject leaderboard UI
+        # Modify the index.html file to include the web_api.js script
         index_html_path = "build/web/index.html"
         if os.path.exists(index_html_path):
-            inject_ui_panels(index_html_path)
-        
-        print("\nYou can find the built files in the 'build/web' directory.")
-        print("To test locally, run: python -m http.server --directory build/web")
-        print("Then open a browser and go to: http://localhost:8000")
-    except subprocess.CalledProcessError as e:
-        print(f"Build failed with error: {e}")
+            with open(index_html_path, "r") as f:
+                html_content = f.read()
+            
+            # Add the script tag before the closing </head> tag
+            if "</head>" in html_content:
+                html_content = html_content.replace("</head>", '<script src="web_api.js"></script></head>')
+                
+                with open(index_html_path, "w") as f:
+                    f.write(html_content)
+                
+                print("Added web_api.js script to index.html")
+            else:
+                print("Could not find </head> tag in index.html")
+        else:
+            print(f"Could not find {index_html_path}")
+    else:
+        print("web_api.js file not found")
         return False
     
+    # Inject leaderboard UI
+    index_html_path = "build/web/index.html"
+    if os.path.exists(index_html_path):
+        inject_ui_panels(index_html_path)
+
     return True
 
 def main():
     """Main function."""
-    print("=== Dasher Pygbag Build Script ===")
-    
     if not check_pygbag_installed():
         return
     
     if build_with_pygbag():
-        print("\nDownloading dependencies for offline use...")
         download_dependencies()
         
-        print("\nYour game is now ready for web deployment!")
-        print("You can upload the contents of the 'build/web' directory to any web server.")
-        print("To test locally, run:")
-        print("  1. python -m http.server --directory build/web")
-        print("  2. Open your browser and go to: http://localhost:8000")
-        print("\nNote: All required dependencies have been downloaded for offline use.")
-        print("      You can now serve the game with a simple HTTP server without CDN dependencies.")
+        print("""
+        Your game is now ready for web deployment!
+        You can upload the contents of the 'build/web' directory to any web server.
+        To test locally, run:
+        1. python -m http.server --directory build/web
+        2. Open your browser and go to: http://localhost:8000
+        """)
+    else:
+        print("Build failed.")
 
 if __name__ == "__main__":
     main()
