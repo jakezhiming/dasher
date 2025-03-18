@@ -23,8 +23,8 @@ from messages import message_manager
 import input_handler
 from level_generator import generate_new_segment, remove_old_objects
 from effects import effect_manager
-from logger import logger, get_module_logger, log_game_start, log_game_over
-from leaderboard import fetch_leaderboard, submit_score
+from logger import logger, get_module_logger
+from leaderboard import fetch_leaderboard, submit_score_and_wait
 
 logger = get_module_logger('main')
 
@@ -61,6 +61,7 @@ async def main():
     game_state = GAME_RUNNING
     game_over_timer = 0
     player_has_moved = False
+    score_submitted = False
     
     # Reset conversation history for new game
     try:
@@ -81,8 +82,7 @@ async def main():
     except Exception as e:
         logger.warning(f"Failed to set welcome message: {str(e)}")
 
-    # Log game start
-    log_game_start()
+    logger.info("Game started")
 
     # Update leaderboard display at start
     if IS_WEB:
@@ -200,12 +200,13 @@ async def main():
                 # Show game over message for a few seconds
                 if pygame.time.get_ticks() - game_over_timer > GAME_OVER_DISPLAY_DURATION:
                     game_state = GAME_OVER
-                    log_game_over(player.score)
+                    logger.info(f"Game over")
                     
-                    # Submit score to leaderboard
-                    if IS_WEB:
+                    # Submit score to leaderboard and wait for it to complete
+                    if IS_WEB and not score_submitted:
                         current_personality = message_manager.llm_handler.get_current_personality()
-                        submit_score(current_personality, player.score)
+                        score_submitted = True
+                        await submit_score_and_wait(current_personality, player.score)
                 
                 # Continue drawing the game state - reuse the same drawing code
                 draw_background(screen, camera_x)
@@ -259,6 +260,7 @@ async def main():
                 game_over = False
                 game_state = GAME_RUNNING
                 player_has_moved = False
+                score_submitted = False
                 
                 # Reset conversation history for the new game
                 message_manager.llm_handler.reset_conversation_history()

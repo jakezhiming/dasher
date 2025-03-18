@@ -103,15 +103,6 @@ def get_module_logger(module_name):
     """
     return logging.getLogger(f'dasher.{module_name}')
 
-# Game-specific logging functions
-def log_game_start():
-    """Log when the game starts."""
-    logger.info("Game started")
-
-def log_game_over(score):
-    """Log when the game ends with the final score."""
-    logger.info(f"Game over. Final score: {score}")
-
 # Configure logger based on environment variables or .env file
 def configure_from_env():
     """Configure the logger based on environment variables."""
