@@ -55,6 +55,9 @@ window.submitScore = async function(playerName, score) {
             throw new Error("Failed to authenticate with proxy");
         }
 
+        // Store the pre-submission state for comparison
+        const oldLeaderboardData = JSON.stringify(window.leaderboardData || []);
+
         const response = await fetch(`${BaseUrl}leaderboard`, {
             method: 'POST',
             headers: {
@@ -72,8 +75,19 @@ window.submitScore = async function(playerName, score) {
         }
 
         console.log("Score submitted successfully, refreshing leaderboard");
+        
         // Refresh leaderboard after submitting score
         const newData = await window.fetchLeaderboard();
+        
+        // Check if the data actually changed
+        const newLeaderboardData = JSON.stringify(newData || []);
+        if (oldLeaderboardData === newLeaderboardData) {
+            console.warn("Leaderboard data didn't change after score submission, forcing refresh");
+            // Force a timeout and retry to ensure the server had time to process
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await window.fetchLeaderboard();
+        }
+        
         return newData;
     } catch (error) {
         console.error("Error submitting score:", error);
