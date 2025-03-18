@@ -127,12 +127,16 @@ def build_with_pygbag():
     if os.path.exists("build"):
         shutil.rmtree("build")
     
-    files_not_required = ['.env', '.env.example', 'web_api.js', 'panels.css', 'panels.html', 'README.md', 'requirements.txt', 'leaderboard.db']
+    files_not_required = ['.env', '.env.example', 'web_api.js', 'panels.css', 'panels.html', 
+                          'README.md', 'requirements.txt', 'proxy_server.py', 'pygbag_build.py', 
+                          'leaderboard.db']
+    folders_not_required = ['tools', 'logs']
     temp_files = {}
+    temp_folders = {}
     
     try:
         # Temporarily move files not required for the build
-        print("Moving files not required for the build out of the build directory...")
+        print("Moving files and folders not required for the build out of the build directory...")
         for file in files_not_required:
             if os.path.exists(file):
                 temp_fd, temp_path = tempfile.mkstemp(prefix=f"{file}_backup_")
@@ -140,6 +144,14 @@ def build_with_pygbag():
                 shutil.copy(file, temp_path)
                 temp_files[file] = temp_path
                 os.remove(file)
+        
+        # Temporarily move folders not required for the build
+        for folder in folders_not_required:
+            if os.path.exists(folder) and os.path.isdir(folder):
+                temp_dir = tempfile.mkdtemp(prefix=f"{folder}_backup_")
+                shutil.copytree(folder, temp_dir, dirs_exist_ok=True)
+                temp_folders[folder] = temp_dir
+                shutil.rmtree(folder)
         
         # Run pygbag on the main.py file
         cmd = [sys.executable, "-m", "pygbag", "--build", "main.py"]
@@ -154,12 +166,20 @@ def build_with_pygbag():
 
     finally:
         # Restore the files not required for the build
-        print("Restoring files not required for the build...")
+        print("Restoring files and folders not required for the build...")
         for file, temp_path in temp_files.items():
             if os.path.exists(temp_path):
                 shutil.copy(temp_path, file)
                 os.remove(temp_path)
-            
+        
+        # Restore folders not required for the build
+        for folder, temp_dir in temp_folders.items():
+            if os.path.exists(temp_dir):
+                if os.path.exists(folder):
+                    shutil.rmtree(folder)
+                shutil.copytree(temp_dir, folder, dirs_exist_ok=True)
+                shutil.rmtree(temp_dir)
+
     # Copy the web_api.js file to the build directory
     if os.path.exists("web_api.js"):
         print("Copying web_api.js to build/web directory...")
