@@ -33,16 +33,12 @@ def submit_score(player_name, score):
         try:
             from js import window
             logger.info(f"Submitting score: {player_name} - {score}")
-            # Submit score and wait for it to complete
             window.submitScore(player_name, score)
-            # Force an immediate fetch and update of the leaderboard
-            fetch_leaderboard()
         except Exception as e:
             logger.error(f"Error submitting score: {str(e)}")
 
 def on_leaderboard_fetch(result):
     """Callback for when leaderboard data is fetched"""
-    logger.info("Leaderboard data fetched, updating display")
     update_leaderboard_display()
 
 def fetch_leaderboard():
@@ -51,10 +47,7 @@ def fetch_leaderboard():
         try:
             from js import window
             logger.info("Fetching leaderboard data")
-            # Use callback-based approach with immediate update
             promise = window.fetchLeaderboard()
             promise.then(on_leaderboard_fetch)
-            # Also update immediately with whatever data we have
-            update_leaderboard_display()
         except Exception as e:
             logger.error(f"Error fetching leaderboard: {str(e)}")
