@@ -2,7 +2,8 @@
 
 Dasher is an AI-powered 2D side-scrolling platformer game built with Pygame where you dash and jump through an endless procedurally generated world.
 
-You can now play Dasher directly in your browser (web only)! Note: It's highly addictive - [https://jakezhiming.github.io/dasher/](https://jakezhiming.github.io/dasher/)
+You can now play Dasher directly in your browser (web only)! 
+Note: It's highly addictive - [https://jakezhiming.github.io/dasher/](https://jakezhiming.github.io/dasher/)
 
 <img src="assets/images/dasher_preview.png" width="1000"/>
 
@@ -22,9 +23,9 @@ In Dasher, you control a character that must navigate through an endless world f
 The game features:
 - **Difficulty Scaling**: The game gets progressively harder the further you go, with more obstacles, wider pits, and more challenging level elements
 - **AI-Powered Messages**: Game messages are rephrased by an AI in different personalities (pirate, robot, wizard, etc.) using OpenAI's GPT-4o-mini model
-- **Leaderboard**: Track your high scores and compete with other players globally
-- **Bonus Score System**: Earn bonus points by reaching score targets within time limits
 - **Special Animations**: Visual effects for double jumps, dashes, power-ups, and more
+- **Bonus Score System**: Earn bonus points by reaching score targets within time limits
+- **Leaderboard**: Track your high scores and compete with other players globally
 
 ## Controls
 
