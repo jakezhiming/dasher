@@ -33,10 +33,10 @@ for y in range(0, TEXTURE_HEIGHT, brick_height):
         # Draw brick rectangle
         brick_rect = pygame.Rect(x, y, brick_width - 1, brick_height - 1)
         pygame.draw.rect(ground_texture, LIGHT_BROWN, brick_rect)
-        
+
         # Draw brick outline
         pygame.draw.rect(ground_texture, DARK_BROWN, brick_rect, 1)
-        
+
         # Add some random pixel noise within each brick
         for i in range(3):
             px = random.randint(x + 2, x + brick_width - 3)
@@ -63,4 +63,4 @@ os.makedirs("assets/images/textures", exist_ok=True)
 
 # Save the texture
 pygame.image.save(ground_texture, "assets/images/textures/ground_texture.png")
-print("Enhanced ground texture generated successfully!") 
+print("Enhanced ground texture generated successfully!")
