@@ -150,7 +150,7 @@ def build_with_pygbag():
         ".env.example",
         ".gitignore",
         "README.md",
-        "setup.py",
+        "Makefile",
         "requirements.txt",
         "leaderboard.db",
     ]
