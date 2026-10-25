@@ -1,3 +1,5 @@
+import html
+
 from src.utils.compat import IS_WEB
 from src.utils.logger import logger, get_module_logger
 
@@ -14,13 +16,16 @@ def update_leaderboard_display():
             if leaderboard_data:
                 leaderboard_html = ""
                 for i, entry in enumerate(leaderboard_data, 1):
+                    # Leaderboard entries come from the server, so escape them before inserting as HTML
+                    player_name = html.escape(str(entry.player_name))
+                    score = html.escape(str(entry.score))
                     leaderboard_html += f"""
                     <div class="leaderboard-entry">
                         <div class="rank-name">
                             <span class="rank">{i}</span>
-                            <span class="name">{entry.player_name}</span>
+                            <span class="name">{player_name}</span>
                         </div>
-                        <span class="score">{entry.score}</span>
+                        <span class="score">{score}</span>
                     </div>
                     """
                 document.querySelector(".leaderboard-entries").innerHTML = (
