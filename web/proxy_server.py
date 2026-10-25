@@ -36,13 +36,14 @@ if not PROXY_TOKEN:
 
 # The proxy token ships in the public web client, so it cannot be relied on to
 # keep the proxy private. Requests are rebuilt from an allowlist instead, so the
-# proxy can only be used for the small chat completions the game makes.
+# proxy can only be used for the small chat completions the game (and Daydream)
+# makes.
 ALLOWED_MODELS = set(
     m.strip() for m in os.getenv("OPENAI_ALLOWED_MODELS", "gpt-4o-mini").split(",") if m.strip()
 )
 MAX_TOKENS_LIMIT = int(os.getenv("OPENAI_MAX_TOKENS", "200"))
 MAX_MESSAGES = 10
-MAX_MESSAGE_CHARS = 4000
+MAX_MESSAGE_CHARS = 8000
 ALLOWED_ROLES = {"system", "user", "assistant"}
 
 # Leaderboard limits
